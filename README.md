@@ -1,0 +1,1 @@
+Referência para "sys/queue.h": https://linux.die.net/man/3/queue
