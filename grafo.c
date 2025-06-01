@@ -13,19 +13,18 @@
 #define COMENTARIO "//"
 #define ARESTA "--"
 #define HASH_MAX 1 << 20
-#define TAM_VET_INIT 16
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
 
 struct grafo {
   char nome[TAM_LINHA_MAX];
-  vertice **vetListas;
-  long numEntradas;
+  LIST_HEAD(listaVertices, vertice) vertices;
 };
 
 struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
+  LIST_ENTRY(vertice) entradas;
   long estado; /* variavel auxiliar para algoritmos */
 };
 
@@ -35,30 +34,27 @@ struct vizinho {
   long peso;
 };
 
-char* adicionarVertice(ENTRY *entryP, grafo *grafoP, long *idx, long *tam) {
+void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
   novoVertice = malloc(sizeof(vertice));
   assert(novoVertice != NULL);
   LIST_INIT(&novoVertice->vizinhos);
-
-  grafoP->vetListas[(*idx)++] = novoVertice;
-  if ((*idx) >= (*tam)) {
-    (*tam) *= 2;
-    grafoP->vetListas = realloc(grafoP->vetListas, sizeof(vertice*) * (*tam));
-    assert(grafoP->vetListas != NULL);
+  if (LIST_EMPTY(&grafoP->vertices)) {
+    LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
+  } else {
+    LIST_INSERT_BEFORE(grafoP->vertices.lh_first, novoVertice, entradas);
   }
-
   entryP->data = (void*)novoVertice;
   hsearch((*entryP), ENTER);
 }
 
-ENTRY* verificaVertice(char *sub, grafo *grafoP, long *idx, long *tam) {
+ENTRY* verificaVertice(char *sub, grafo *grafoP) {
   ENTRY entry;
   ENTRY *entryP;
-  entry.key = strdup(sub); /* OBS: nao tenho ctz se hdestroy da free nas chaves */
+  entry.key = strdup(sub); /* OBS: nao tenho ctz se hdestroy faz free das chaves */
   entryP = hsearch(entry, FIND);
   if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
-    adicionarVertice(&entry, grafoP, idx, tam);
+    adicionarVertice(&entry, grafoP);
     entryP = hsearch(entry, FIND);
     assert(entryP != NULL);
   }
@@ -95,15 +91,12 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
 
 grafo *le_grafo(FILE *f) {
   grafo *grafoG;
-  long idxNovoVertice = 0;
-  long tamVetListas = TAM_VET_INIT;
   char line[TAM_LINHA_MAX];
   int peso;
 
   grafoG = malloc(sizeof(grafo));
   assert(grafoG != NULL);
-  grafoG->vetListas = malloc(sizeof(vertice *) * tamVetListas);
-  assert(grafoG->vetListas != NULL);
+  LIST_INIT(&grafoG->vertices);
 
   ENTRY *entryP1, *entryP2;
   hcreate(HASH_MAX);
@@ -114,7 +107,7 @@ grafo *le_grafo(FILE *f) {
     if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO))) continue; /* ignora comentario */
 
     char *subtring = strtok(line, ESPACO);
-    entryP1 = verificaVertice(subtring, grafoG, &idxNovoVertice, &tamVetListas);
+    entryP1 = verificaVertice(subtring, grafoG);
 
     subtring = strtok(line, ESPACO);
     if (subtring != NULL) /* se ha algo mais, deve ser string ARESTA */
@@ -122,7 +115,7 @@ grafo *le_grafo(FILE *f) {
 
     subtring = strtok(NULL, ESPACO);
     if (subtring == NULL) continue; /* vertice isolado */
-    entryP2 = verificaVertice(subtring, grafoG, &idxNovoVertice, &tamVetListas);
+    entryP2 = verificaVertice(subtring, grafoG);
 
     subtring = strtok(NULL, ESPACO);
     if (subtring == NULL) { /* aresta sem peso */
@@ -133,7 +126,6 @@ grafo *le_grafo(FILE *f) {
     }
   }
 
-  grafoG->numEntradas = idxNovoVertice;
   hdestroy();
 
   return grafoG;
