@@ -109,12 +109,14 @@ grafo *le_grafo(FILE *f) {
     char *subtring = strtok(line, ESPACO);
     entryP1 = verificaVertice(subtring, grafoG);
 
-    subtring = strtok(line, ESPACO);
-    if (subtring != NULL) /* se ha algo mais, deve ser string ARESTA */
+    subtring = strtok(NULL, ESPACO);
+    if (subtring != NULL) { /* se ha algo mais, deve ser string ARESTA */
       assert(!strncmp(ARESTA, subtring, sizeof(ARESTA)));
+    } else { /* vertice isolado */
+      continue;
+    }
 
     subtring = strtok(NULL, ESPACO);
-    if (subtring == NULL) continue; /* vertice isolado */
     entryP2 = verificaVertice(subtring, grafoG);
 
     subtring = strtok(NULL, ESPACO);
