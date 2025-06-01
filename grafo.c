@@ -1,123 +1,140 @@
 #include "grafo.h"
-#include <sys/queue.h>
+#include <assert.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <search.h>
+#include <sys/queue.h>
 
 #define TAM_LINHA_MAX 2047
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
+#define HASH_MAX 1 << 20
+#define TAM_VET_INIT 16
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
 
 struct grafo {
   char nome[TAM_LINHA_MAX];
-  unsigned int verticesCont;
-  unsigned int arestasCont;
-  vertice **listasVet;
+  vertice **vetListas;
+  long numEntradas;
 };
 
 struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
+  long estado; /* variavel auxiliar para algoritmos */
 };
 
 struct vizinho {
-  unsigned int idx;
-  unsigned int peso;
+  vertice *verticeRef; /* cada vizinho eh referente a um vertice */
   LIST_ENTRY(vizinho) entradas;
+  long peso;
 };
 
-void adicionarVertice(int idx, vertice **vptr) {
-  *vptr = malloc(sizeof(vertice));
-  LIST_INIT(&(*vptr)->vizinhos);
+char* adicionarVertice(ENTRY *entryP, grafo *grafoP, long *idx, long *tam) {
+  vertice *novoVertice;
+  novoVertice = malloc(sizeof(vertice));
+  assert(novoVertice != NULL);
+  LIST_INIT(&novoVertice->vizinhos);
+
+  grafoP->vetListas[(*idx)++] = novoVertice;
+  if ((*idx) >= (*tam)) {
+    (*tam) *= 2;
+    grafoP->vetListas = realloc(grafoP->vetListas, sizeof(vertice*) * (*tam));
+    assert(grafoP->vetListas != NULL);
+  }
+
+  entryP->data = (void*)novoVertice;
+  hsearch((*entryP), ENTER);
 }
 
-void adicionarVizinho(int peso, int idx, vertice *vptr) {
-  vizinho *novoVizinho;
-
-  novoVizinho = malloc(sizeof(vizinho));
-  if (novoVizinho == NULL) {
-    fprintf(stderr, "Erro ao alocar vizinho. Saindo.\n");
-    exit(1);
+ENTRY* verificaVertice(char *sub, grafo *grafoP, long *idx, long *tam) {
+  ENTRY entry;
+  ENTRY *entryP;
+  entry.key = strdup(sub); /* OBS: nao tenho ctz se hdestroy da free nas chaves */
+  entryP = hsearch(entry, FIND);
+  if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
+    adicionarVertice(&entry, grafoP, idx, tam);
+    entryP = hsearch(entry, FIND);
+    assert(entryP != NULL);
   }
-  novoVizinho->idx = idx;
-  if (peso >= 0) {
-    novoVizinho->peso = peso; /* pesos devem ser não negativos */
-  }
-  if (vptr->vizinhos.lh_first == NULL) {
-    LIST_INSERT_HEAD(&vptr->vizinhos, novoVizinho, entradas);
-  } else {
-    LIST_INSERT_BEFORE(vptr->vizinhos.lh_first, novoVizinho, entradas);
-  }
+  return entryP;
 }
 
-void tratarLinha(char *line, grafo *grafoG) {
-  int primVertIdx;
-  int segVertIdx;
-  int pesoAresta;
-  char *subString;
+void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
+  vizinho *vizinho1;
+  vizinho *vizinho2;
 
-  if (!strcmp(COMENTARIO, line)) return;
+  vizinho1 = malloc(sizeof(vizinho));
+  assert(vizinho1 != NULL);
+  vizinho2 = malloc(sizeof(vizinho));
+  assert(vizinho2 != NULL);
 
-  subString = strtok(line, ESPACO);
-  sscanf(subString, "%d", &primVertIdx);
-  if (grafoG->listasVet[primVertIdx] == NULL) {
-    /* vertice nao conhecido */
-    adicionarVertice(primVertIdx, &grafoG->listasVet[primVertIdx]);
-    grafoG->verticesCont++;
-  }
-
-  subString = strtok(NULL, ESPACO);
-  if (subString == NULL) return; /* linha sem aresta */
-  if (strcmp(ARESTA, subString)) {
-    fprintf(stderr, "Esperava por aresta. Saindo.\n");
-    exit(1);
-  }
-  grafoG->arestasCont++;
-
-  subString = strtok(NULL, ESPACO);
-  sscanf(subString, "%d", &segVertIdx);
-  if (grafoG->listasVet[segVertIdx] == NULL) {
-    /* vertice nao conhecido */
-    adicionarVertice(segVertIdx, &grafoG->listasVet[segVertIdx]);
-    grafoG->verticesCont++;
-  }
-
-  subString = strtok(NULL, ESPACO);
-  if (subString == NULL) { /* linha sem peso */
-    pesoAresta = -1;
+  /* insere vertice 2 nos vizinhos do vertice 1 */
+  vizinho1->peso = peso;
+  vizinho1->verticeRef = vp1;
+  if (LIST_EMPTY(&vp1->vizinhos)) {
+    LIST_INSERT_HEAD(&vp1->vizinhos, vizinho2, entradas);
   } else {
-    sscanf(subString, "%d", &pesoAresta);
+    LIST_INSERT_BEFORE(vp1->vizinhos.lh_first, vizinho2, entradas);
   }
-  adicionarVizinho(pesoAresta, segVertIdx, grafoG->listasVet[primVertIdx]);
-  adicionarVizinho(pesoAresta, primVertIdx, grafoG->listasVet[segVertIdx]);
+
+  /* insere vertice 1 nos vizinhos do vertice 2 */
+  vizinho2->peso = peso;
+  vizinho2->verticeRef = vp2;
+  if (LIST_EMPTY(&vp2->vizinhos)) {
+    LIST_INSERT_HEAD(&vp2->vizinhos, vizinho1, entradas);
+  } else {
+    LIST_INSERT_BEFORE(vp2->vizinhos.lh_first, vizinho1, entradas);
+  }
 }
 
 grafo *le_grafo(FILE *f) {
   grafo *grafoG;
+  long idxNovoVertice = 0;
+  long tamVetListas = TAM_VET_INIT;
   char line[TAM_LINHA_MAX];
+  int peso;
 
   grafoG = malloc(sizeof(grafo));
-  if (grafoG == NULL) {
-    fprintf(stderr, "Erro ao alocar grafo. Saindo.\n");
-    exit(1);
-  }
-  grafoG->listasVet = malloc(sizeof(vertice*) * 16384);
-  if (grafoG->listasVet == NULL) {
-    fprintf(stderr, "Erro ao alocar vetor de listas. Saindo.\n");
-    exit(1);
-  }
-  memset(grafoG->listasVet, 0, sizeof(vertice*) * 16384);
+  assert(grafoG != NULL);
+  grafoG->vetListas = malloc(sizeof(vertice *) * tamVetListas);
+  assert(grafoG->vetListas != NULL);
 
-  grafoG->arestasCont = 0;
-  grafoG->verticesCont = 0;
+  ENTRY *entryP1, *entryP2;
+  hcreate(HASH_MAX);
+
   fgets(grafoG->nome, TAM_LINHA_MAX, f);
   while (fgets(line, TAM_LINHA_MAX, f)) {
-    if (line[0] == '\0') continue;
-    tratarLinha(line, grafoG);
+    if (line[0] == '\0') continue; /* ignora linha em branco */
+    if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO))) continue; /* ignora comentario */
+
+    char *subtring = strtok(line, ESPACO);
+    entryP1 = verificaVertice(subtring, grafoG, &idxNovoVertice, &tamVetListas);
+
+    subtring = strtok(line, ESPACO);
+    if (subtring != NULL) /* se ha algo mais, deve ser string ARESTA */
+      assert(!strncmp(ARESTA, subtring, sizeof(ARESTA)));
+
+    subtring = strtok(NULL, ESPACO);
+    if (subtring == NULL) continue; /* vertice isolado */
+    entryP2 = verificaVertice(subtring, grafoG, &idxNovoVertice, &tamVetListas);
+
+    subtring = strtok(NULL, ESPACO);
+    if (subtring == NULL) { /* aresta sem peso */
+      adicionarVizinho(-1, (vertice*)entryP1->data, (vertice*)entryP2->data);
+    } else { /* aresta com peso */
+      sscanf(subtring, "%d", &peso);
+      adicionarVizinho(peso, (vertice*)entryP1->data, (vertice*)entryP2->data);
+    }
   }
+
+  grafoG->numEntradas = idxNovoVertice;
+  hdestroy();
 
   return grafoG;
 }
