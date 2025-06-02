@@ -183,6 +183,8 @@ unsigned int destroi_grafo(grafo *g) {
     LIST_REMOVE(verticeIt, entradas);
     free(verticeIt);
   }
+
+  free(g);
   
   return 1;
 }
