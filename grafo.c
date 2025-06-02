@@ -41,6 +41,7 @@ struct grafo {
 struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
   LIST_ENTRY(vertice) entradas;
+  LIST_ENTRY(vertice) entradasTmp; /* usado para inserir vertice em outra fila */
   long estado; /* variavel auxiliar para algoritmos */
 };
 
