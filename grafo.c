@@ -8,9 +8,6 @@
 #include <search.h>
 #include <sys/queue.h>
 
-/* temporario para testes */
-#define DEBUG
-
 #ifndef DEBUG
 #define DEBUG_PRINT(...)                 \
   {                                      \
