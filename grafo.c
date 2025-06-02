@@ -34,6 +34,19 @@ struct vizinho {
   long peso;
 };
 
+#ifndef DEBUG
+#define DEBUG_PRINT(...)                 \
+  {                                      \
+    while(0);                            \
+  }
+#else
+#define DEBUG_PRINT(...)                 \
+  {                                      \
+    fprintf(stderr, "[DEBUG] ");         \
+    fprintf(stderr, __VA_ARGS__);        \
+  }
+#endif
+
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
   novoVertice = malloc(sizeof(vertice));
@@ -51,9 +64,10 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
 ENTRY* verificaVertice(char *sub, grafo *grafoP) {
   ENTRY entry;
   ENTRY *entryP;
-  entry.key = strdup(sub); /* OBS: nao tenho ctz se hdestroy faz free das chaves */
+  entry.key = sub;
   entryP = hsearch(entry, FIND);
   if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
+    entry.key = strdup(sub); /* sub eh temporario */
     adicionarVertice(&entry, grafoP);
     entryP = hsearch(entry, FIND);
     assert(entryP != NULL);
@@ -102,29 +116,35 @@ grafo *le_grafo(FILE *f) {
   hcreate(HASH_MAX);
 
   fgets(grafoG->nome, TAM_LINHA_MAX, f);
+  grafoG->nome[strlen(grafoG->nome) - 1] = '\0'; /* remover '\n' */
+  DEBUG_PRINT("Nome do grafo [%s]\n", grafoG->nome);
   while (fgets(line, TAM_LINHA_MAX, f)) {
+    line[strlen(line) - 1] = '\0'; /* remover '\n' */
     if (line[0] == '\0') continue; /* ignora linha em branco */
     if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO))) continue; /* ignora comentario */
 
-    char *subtring = strtok(line, ESPACO);
-    entryP1 = verificaVertice(subtring, grafoG);
+    char *substring = strtok(line, ESPACO);
+    entryP1 = verificaVertice(substring, grafoG);
+    DEBUG_PRINT("Primeiro vertice [%s]\n", substring);
 
-    subtring = strtok(NULL, ESPACO);
-    if (subtring != NULL) { /* se ha algo mais, deve ser string ARESTA */
-      assert(!strncmp(ARESTA, subtring, sizeof(ARESTA)));
+    substring = strtok(NULL, ESPACO);
+    if (substring != NULL) { /* se ha algo mais, deve ser string ARESTA */
+      assert(!strncmp(ARESTA, substring, sizeof(ARESTA)));
     } else { /* vertice isolado */
       continue;
     }
 
-    subtring = strtok(NULL, ESPACO);
-    entryP2 = verificaVertice(subtring, grafoG);
+    substring = strtok(NULL, ESPACO);
+    entryP2 = verificaVertice(substring, grafoG);
+    DEBUG_PRINT("Segundo vertice [%s]\n", substring);
 
-    subtring = strtok(NULL, ESPACO);
-    if (subtring == NULL) { /* aresta sem peso */
+    substring = strtok(NULL, ESPACO);
+    if (substring == NULL) { /* aresta sem peso */
       adicionarVizinho(-1, (vertice*)entryP1->data, (vertice*)entryP2->data);
     } else { /* aresta com peso */
-      sscanf(subtring, "%d", &peso);
+      sscanf(substring, "%d", &peso);
       adicionarVizinho(peso, (vertice*)entryP1->data, (vertice*)entryP2->data);
+      DEBUG_PRINT("Peso [%d]\n", peso);
     }
   }
 
