@@ -8,6 +8,22 @@
 #include <search.h>
 #include <sys/queue.h>
 
+/* temporario para testes */
+#define DEBUG
+
+#ifndef DEBUG
+#define DEBUG_PRINT(...)                 \
+  {                                      \
+    while(0);                            \
+  }
+#else
+#define DEBUG_PRINT(...)                 \
+  {                                      \
+    fprintf(stderr, "[DEBUG] ");         \
+    fprintf(stderr, __VA_ARGS__);        \
+  }
+#endif
+
 #define TAM_LINHA_MAX 2047
 #define ESPACO " "
 #define COMENTARIO "//"
@@ -34,18 +50,10 @@ struct vizinho {
   long peso;
 };
 
-#ifndef DEBUG
-#define DEBUG_PRINT(...)                 \
-  {                                      \
-    while(0);                            \
-  }
-#else
-#define DEBUG_PRINT(...)                 \
-  {                                      \
-    fprintf(stderr, "[DEBUG] ");         \
-    fprintf(stderr, __VA_ARGS__);        \
-  }
-#endif
+/* vetor global usado para salvar ponteiros de strings alocadas
+ * usado para dar free em todas strings ao fim de le_grafo */
+char *hashStrings[HASH_MAX];
+unsigned int usadoHashStrings = 0;
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
@@ -67,7 +75,9 @@ ENTRY* verificaVertice(char *sub, grafo *grafoP) {
   entry.key = sub;
   entryP = hsearch(entry, FIND);
   if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
-    entry.key = strdup(sub); /* sub eh temporario */
+    DEBUG_PRINT("Entrada [%s] nao encontrada\n", entry.key);
+    entry.key = strdup(sub); /* sub eh temporario, precisa ser duplicado */
+    hashStrings[usadoHashStrings++] = entry.key;
     adicionarVertice(&entry, grafoP);
     entryP = hsearch(entry, FIND);
     assert(entryP != NULL);
@@ -149,12 +159,18 @@ grafo *le_grafo(FILE *f) {
   }
 
   hdestroy();
+  for (unsigned int i = 0; i < usadoHashStrings; i++)
+    free(hashStrings[i]);
 
   return grafoG;
 }
 
 unsigned int destroi_grafo(grafo *g) {
+  if (g == NULL) 
+    return 0;
 
+  for (unsigned int i = 0; i < usadoHashStrings; i++)
+    free(hashStrings[i]);
 }
 
 char *nome(grafo *g) {
