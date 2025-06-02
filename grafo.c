@@ -205,7 +205,7 @@ unsigned int n_vertices(grafo *g) {
 }
 
 unsigned int n_arestas(grafo *g) {
-
+  return g->numA;
 }
 
 unsigned int n_componentes(grafo *g) {
