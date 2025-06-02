@@ -26,6 +26,9 @@
 #define COMENTARIO "//"
 #define ARESTA "--"
 #define HASH_MAX 1 << 20
+#define VERTICE_EM_V0 1
+#define VERTICE_EM_V1 2
+#define VERTICE_EM_V2 3 
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
@@ -192,6 +195,13 @@ unsigned int destroi_grafo(grafo *g) {
   return 1;
 }
 
+void zerarEstadosVertices(grafo *grafoP) {
+  vertice *verticeIt;
+  LIST_FOREACH(verticeIt, &grafoP->vertices, entradas) {
+    verticeIt->estado = VERTICE_EM_V0;
+  }
+}
+
 char *nome(grafo *g) {
   return g->nome;
 }
@@ -208,8 +218,39 @@ unsigned int n_arestas(grafo *g) {
   return g->numA;
 }
 
-unsigned int n_componentes(grafo *g) {
+void componente(vertice *v) {
+  LIST_HEAD(lista, vertice) lista;
+  LIST_INIT(&lista);
+  v->estado = VERTICE_EM_V1;
+  LIST_INSERT_HEAD(&lista, v, entradasTmp);
+  vertice *verticeIt;
+  vizinho *vizinhoIt;
+  while (!LIST_EMPTY(&lista)) {
+    verticeIt = lista.lh_first;
+    LIST_FOREACH(vizinhoIt, &verticeIt->vizinhos, entradas) {
+      if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
+        vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
+        LIST_INSERT_AFTER(verticeIt, vizinhoIt->verticeRef, entradasTmp);
+      }
+    }
+    LIST_REMOVE(verticeIt, entradasTmp);
+    verticeIt->estado = VERTICE_EM_V2;
+  }
+}
 
+unsigned int n_componentes(grafo *g) {
+  unsigned int cont = 0;
+
+  zerarEstadosVertices(g);
+  vertice *verticeIt;
+  LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+    if (verticeIt->estado == VERTICE_EM_V0) {
+      componente(verticeIt);
+      cont++;
+    }
+  }
+
+  return cont;
 }
 
 char *diametros(grafo *g) {
