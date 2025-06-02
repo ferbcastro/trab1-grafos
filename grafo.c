@@ -63,8 +63,9 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   LIST_INIT(&novoVertice->vizinhos);
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
+    DEBUG_PRINT("le_prev [%p] [adicionarVertice 1]\n", novoVertice->entradas.le_prev);
   } else {
-    LIST_INSERT_BEFORE(grafoP->vertices.lh_first, novoVertice, entradas);
+    LIST_INSERT_AFTER(grafoP->vertices.lh_first, novoVertice, entradas);
   }
   entryP->data = (void*)novoVertice;
   hsearch((*entryP), ENTER);
@@ -101,7 +102,7 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
   if (LIST_EMPTY(&vp1->vizinhos)) {
     LIST_INSERT_HEAD(&vp1->vizinhos, vizinho2, entradas);
   } else {
-    LIST_INSERT_BEFORE(vp1->vizinhos.lh_first, vizinho2, entradas);
+    LIST_INSERT_AFTER(vp1->vizinhos.lh_first, vizinho2, entradas);
   }
 
   /* insere vertice 1 nos vizinhos do vertice 2 */
@@ -110,7 +111,7 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
   if (LIST_EMPTY(&vp2->vizinhos)) {
     LIST_INSERT_HEAD(&vp2->vizinhos, vizinho1, entradas);
   } else {
-    LIST_INSERT_BEFORE(vp2->vizinhos.lh_first, vizinho1, entradas);
+    LIST_INSERT_AFTER(vp2->vizinhos.lh_first, vizinho1, entradas);
   }
 }
 
@@ -170,8 +171,20 @@ unsigned int destroi_grafo(grafo *g) {
   if (g == NULL) 
     return 0;
 
-  for (unsigned int i = 0; i < usadoHashStrings; i++)
-    free(hashStrings[i]);
+  vertice *verticeIt;
+  vizinho *vizinhoIt;
+  while (!LIST_EMPTY(&g->vertices)) {
+    while (!LIST_EMPTY(&g->vertices.lh_first->vizinhos)) {
+      vizinhoIt = g->vertices.lh_first->vizinhos.lh_first;
+      LIST_REMOVE(vizinhoIt, entradas);
+      free(vizinhoIt);
+    }
+    verticeIt = g->vertices.lh_first;
+    LIST_REMOVE(verticeIt, entradas);
+    free(verticeIt);
+  }
+  
+  return 1;
 }
 
 char *nome(grafo *g) {

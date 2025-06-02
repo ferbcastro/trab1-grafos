@@ -1,7 +1,8 @@
 #include "grafo.h"
 
 int main() {
-  le_grafo(stdin);
+  grafo* g = le_grafo(stdin);
+  destroi_grafo(g);
 
   return 0;
 }
