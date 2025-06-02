@@ -33,6 +33,8 @@ typedef struct vizinho vizinho;
 struct grafo {
   char nome[TAM_LINHA_MAX];
   LIST_HEAD(listaVertices, vertice) vertices;
+  unsigned int numV;
+  unsigned int numA;
 };
 
 struct vertice {
@@ -60,7 +62,6 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   LIST_INIT(&novoVertice->vizinhos);
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
-    DEBUG_PRINT("le_prev [%p] [adicionarVertice 1]\n", novoVertice->entradas.le_prev);
   } else {
     LIST_INSERT_AFTER(grafoP->vertices.lh_first, novoVertice, entradas);
   }
@@ -77,9 +78,12 @@ ENTRY* verificaVertice(char *sub, grafo *grafoP) {
     DEBUG_PRINT("Entrada [%s] nao encontrada\n", entry.key);
     entry.key = strdup(sub); /* sub eh temporario, precisa ser duplicado */
     hashStrings[usadoHashStrings++] = entry.key;
+
     adicionarVertice(&entry, grafoP);
     entryP = hsearch(entry, FIND);
     assert(entryP != NULL);
+
+    grafoP->numV++;
   }
   return entryP;
 }
@@ -120,6 +124,7 @@ grafo *le_grafo(FILE *f) {
   grafoG = malloc(sizeof(grafo));
   assert(grafoG != NULL);
   LIST_INIT(&grafoG->vertices);
+  grafoG->numV = grafoG->numA = 0;
 
   ENTRY *entryP1, *entryP2;
   hcreate(HASH_MAX);
@@ -139,6 +144,7 @@ grafo *le_grafo(FILE *f) {
     substring = strtok(NULL, ESPACO);
     if (substring != NULL) { /* se ha algo mais, deve ser string ARESTA */
       assert(!strncmp(ARESTA, substring, sizeof(ARESTA)));
+      grafoG->numA++;
     } else { /* vertice isolado */
       continue;
     }
@@ -146,7 +152,7 @@ grafo *le_grafo(FILE *f) {
     substring = strtok(NULL, ESPACO);
     entryP2 = verificaVertice(substring, grafoG);
     DEBUG_PRINT("Segundo vertice [%s]\n", substring);
-
+    
     substring = strtok(NULL, ESPACO);
     if (substring == NULL) { /* aresta sem peso */
       adicionarVizinho(-1, (vertice*)entryP1->data, (vertice*)entryP2->data);
@@ -187,7 +193,7 @@ unsigned int destroi_grafo(grafo *g) {
 }
 
 char *nome(grafo *g) {
-
+  return g->nome;
 }
 
 unsigned int bipartido(grafo *g) {
@@ -195,7 +201,7 @@ unsigned int bipartido(grafo *g) {
 }
 
 unsigned int n_vertices(grafo *g) {
-
+  return g->numV;
 }
 
 unsigned int n_arestas(grafo *g) {
