@@ -44,6 +44,7 @@ struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
   LIST_ENTRY(vertice) entradas;
   LIST_ENTRY(vertice) entradasTmp; /* usado para inserir vertice em outra fila */
+  char nome[10];
   long estado; /* variavel auxiliar para algoritmos */
 };
 
@@ -63,6 +64,11 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   novoVertice = malloc(sizeof(vertice));
   assert(novoVertice != NULL);
   LIST_INIT(&novoVertice->vizinhos);
+
+  // Copia o nome do vértice para o campo nome da struct vertice
+  strncpy(novoVertice->nome, entryP->key, sizeof(novoVertice->nome) - 1);
+  novoVertice->nome[sizeof(novoVertice->nome) - 1] = '\0'; // Garante terminação
+
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
   } else {
@@ -207,7 +213,21 @@ char *nome(grafo *g) {
 }
 
 unsigned int bipartido(grafo *g) {
+	if (g == NULL)
+		return 0;
 
+	vertice *verticeIt;
+	vizinho *vizinhoIt;
+
+	LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+		printf("Ver: %s | ", verticeIt->nome);
+		LIST_FOREACH(vizinhoIt, &verticeIt->vizinhos, entradas) {
+			printf("%s ", vizinhoIt->verticeRef->nome);
+		}
+		printf("\n");
+	}
+
+	return 1;
 }
 
 unsigned int n_vertices(grafo *g) {

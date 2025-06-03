@@ -1,10 +1,14 @@
 #include "grafo.h"
 
 int main() {
+  int bip;
   grafo* g = le_grafo(stdin);
-  printf("Numero vertices = %u\n", n_vertices(g));
-  printf("Numero arestas = %u\n", n_arestas(g));
-  printf("Numero componentes = %u\n", n_componentes(g));
+  bip = bipartido(g);
+  if (bip) {
+    printf("Bipartido\n");
+  } else {
+	printf("Não Bipartido\n");
+  }
   destroi_grafo(g);
 
   return 0;
