@@ -26,6 +26,9 @@
 #define COMENTARIO "//"
 #define ARESTA "--"
 #define HASH_MAX 1 << 20
+#define VERTICE_EM_V0 1
+#define VERTICE_EM_V1 2
+#define VERTICE_EM_V2 3 
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
@@ -33,6 +36,8 @@ typedef struct vizinho vizinho;
 struct grafo {
   char nome[TAM_LINHA_MAX];
   LIST_HEAD(listaVertices, vertice) vertices;
+  unsigned int numV;
+  unsigned int numA;
 };
 
 struct vertice {
@@ -60,7 +65,6 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   LIST_INIT(&novoVertice->vizinhos);
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
-    DEBUG_PRINT("le_prev [%p] [adicionarVertice 1]\n", novoVertice->entradas.le_prev);
   } else {
     LIST_INSERT_AFTER(grafoP->vertices.lh_first, novoVertice, entradas);
   }
@@ -77,9 +81,12 @@ ENTRY* verificaVertice(char *sub, grafo *grafoP) {
     DEBUG_PRINT("Entrada [%s] nao encontrada\n", entry.key);
     entry.key = strdup(sub); /* sub eh temporario, precisa ser duplicado */
     hashStrings[usadoHashStrings++] = entry.key;
+
     adicionarVertice(&entry, grafoP);
     entryP = hsearch(entry, FIND);
     assert(entryP != NULL);
+
+    grafoP->numV++;
   }
   return entryP;
 }
@@ -120,6 +127,7 @@ grafo *le_grafo(FILE *f) {
   grafoG = malloc(sizeof(grafo));
   assert(grafoG != NULL);
   LIST_INIT(&grafoG->vertices);
+  grafoG->numV = grafoG->numA = 0;
 
   ENTRY *entryP1, *entryP2;
   hcreate(HASH_MAX);
@@ -139,6 +147,7 @@ grafo *le_grafo(FILE *f) {
     substring = strtok(NULL, ESPACO);
     if (substring != NULL) { /* se ha algo mais, deve ser string ARESTA */
       assert(!strncmp(ARESTA, substring, sizeof(ARESTA)));
+      grafoG->numA++;
     } else { /* vertice isolado */
       continue;
     }
@@ -146,7 +155,7 @@ grafo *le_grafo(FILE *f) {
     substring = strtok(NULL, ESPACO);
     entryP2 = verificaVertice(substring, grafoG);
     DEBUG_PRINT("Segundo vertice [%s]\n", substring);
-
+    
     substring = strtok(NULL, ESPACO);
     if (substring == NULL) { /* aresta sem peso */
       adicionarVizinho(-1, (vertice*)entryP1->data, (vertice*)entryP2->data);
@@ -186,8 +195,15 @@ unsigned int destroi_grafo(grafo *g) {
   return 1;
 }
 
-char *nome(grafo *g) {
+void zerarEstadosVertices(grafo *grafoP) {
+  vertice *verticeIt;
+  LIST_FOREACH(verticeIt, &grafoP->vertices, entradas) {
+    verticeIt->estado = VERTICE_EM_V0;
+  }
+}
 
+char *nome(grafo *g) {
+  return g->nome;
 }
 
 unsigned int bipartido(grafo *g) {
@@ -195,15 +211,46 @@ unsigned int bipartido(grafo *g) {
 }
 
 unsigned int n_vertices(grafo *g) {
-
+  return g->numV;
 }
 
 unsigned int n_arestas(grafo *g) {
+  return g->numA;
+}
 
+void componente(vertice *v) {
+  LIST_HEAD(lista, vertice) lista;
+  LIST_INIT(&lista);
+  v->estado = VERTICE_EM_V1;
+  LIST_INSERT_HEAD(&lista, v, entradasTmp);
+  vertice *verticeIt;
+  vizinho *vizinhoIt;
+  while (!LIST_EMPTY(&lista)) {
+    verticeIt = lista.lh_first;
+    LIST_FOREACH(vizinhoIt, &verticeIt->vizinhos, entradas) {
+      if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
+        vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
+        LIST_INSERT_AFTER(verticeIt, vizinhoIt->verticeRef, entradasTmp);
+      }
+    }
+    LIST_REMOVE(verticeIt, entradasTmp);
+    verticeIt->estado = VERTICE_EM_V2;
+  }
 }
 
 unsigned int n_componentes(grafo *g) {
+  unsigned int cont = 0;
 
+  zerarEstadosVertices(g);
+  vertice *verticeIt;
+  LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+    if (verticeIt->estado == VERTICE_EM_V0) {
+      componente(verticeIt);
+      cont++;
+    }
+  }
+
+  return cont;
 }
 
 char *diametros(grafo *g) {
