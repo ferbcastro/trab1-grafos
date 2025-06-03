@@ -1,6 +1,5 @@
 #include "grafo.h"
 #include <assert.h>
-#include <cstddef>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -189,7 +188,7 @@ unsigned int destroi_grafo(grafo *g) {
 
 char *nome(grafo *g) {
 	if (g == NULL) return NULL;
-	
+
 	return g->nome;
 }
 
