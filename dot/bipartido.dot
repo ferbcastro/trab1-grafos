@@ -1,0 +1,9 @@
+grafo_bipartido
+
+um -- dois 
+dois -- tres 
+tres -- quatro
+quatro -- cinco
+cinco -- seis
+seis -- um
+
