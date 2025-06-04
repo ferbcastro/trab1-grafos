@@ -20,10 +20,12 @@
 #endif
 
 #define TAM_LINHA_MAX 2047
+#define NOME_MAX 128
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
-#define HASH_MAX 1 << 20
+#define HASH_MAX 1 << 18
+#define STRINGS_MAX 4
 #define VERTICE_EM_V0 1
 #define VERTICE_EM_V1 2
 #define VERTICE_EM_V2 3
@@ -39,38 +41,39 @@ struct grafo {
 };
 
 struct vertice {
+    char *nome;
     LIST_HEAD(listaVizinhos, vizinho) vizinhos;
     LIST_ENTRY(vertice) entradas;
-    LIST_ENTRY(vertice)
-    entradasTmp;    /* usado para inserir vertice em outra fila */
-    char nome[128]; /* Nome do vértice. */
-    long estado;    /* variavel auxiliar para algoritmos */
-    vertice *pai;   /* Pai do vértice | para algoritmos*/
+
+    /* usado para inserir vertice em outra fila */
+    LIST_ENTRY(vertice) entradasTmp;
+    /* variavel auxiliar para algoritmos */
+    long estado;
+    /* pai do vértice | para algoritmos*/
+    vertice *pai;
 };
 
 struct vizinho {
-    vertice *verticeRef; /* cada vizinho eh referente a um vertice */
+    /* cada vizinho eh referente a um vertice */
+    vertice *verticeRef;
     LIST_ENTRY(vizinho) entradas;
     long peso;
 };
 
 /* vetor global usado para salvar ponteiros de strings alocadas
  * usado para dar free em todas strings ao fim de le_grafo */
-char *hashStrings[HASH_MAX];
-unsigned int usadoHashStrings = 0;
+char *strings[STRINGS_MAX];
+unsigned int usadoStrings = 0;
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
-    vertice *novoVertice;
-    novoVertice = malloc(sizeof(vertice));
+    vertice *novoVertice = malloc(sizeof(vertice));
     assert(novoVertice != NULL);
     LIST_INIT(&novoVertice->vizinhos);
-
-    // Copia o nome do vértice para o campo nome da struct vertice
-    strncpy(novoVertice->nome, entryP->key, sizeof(novoVertice->nome) - 1);
-    novoVertice->nome[sizeof(novoVertice->nome) - 1] =
-        '\0';  // Garante terminação
-
     novoVertice->pai = NULL;
+
+    /* Copia o nome do vértice para o campo nome da struct vertice */
+    novoVertice->nome = entryP->key;
+
     if (LIST_EMPTY(&grafoP->vertices)) {
         LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
     } else {
@@ -88,7 +91,6 @@ ENTRY *verificaVertice(char *sub, grafo *grafoP) {
     if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
         DEBUG_PRINT("Entrada [%s] nao encontrada\n", entry.key);
         entry.key = strdup(sub); /* sub eh temporario, precisa ser duplicado */
-        hashStrings[usadoHashStrings++] = entry.key;
 
         adicionarVertice(&entry, grafoP);
         entryP = hsearch(entry, FIND);
@@ -178,7 +180,6 @@ grafo *le_grafo(FILE *f) {
     }
 
     hdestroy();
-    for (unsigned int i = 0; i < usadoHashStrings; i++) free(hashStrings[i]);
 
     return grafoG;
 }
@@ -196,10 +197,13 @@ unsigned int destroi_grafo(grafo *g) {
         }
         verticeIt = g->vertices.lh_first;
         LIST_REMOVE(verticeIt, entradas);
+        free(verticeIt->nome);
         free(verticeIt);
     }
-
     free(g);
+
+    for (unsigned int i = 0; i < usadoStrings; i++)
+      free(strings[i]);
 
     return 1;
 }
@@ -231,6 +235,7 @@ int busca_bipartido(grafo *g, vertice *raiz) {
             w = vizinhoIt->verticeRef;
             if (w->estado == v->estado) {
                 bipartido = 0;
+                break;
             } else if (w->estado == VERTICE_EM_V0) {
                 w->pai = v;
                 w->estado = (v->estado == VERTICE_EM_V1) ? VERTICE_EM_V2
