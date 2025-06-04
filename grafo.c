@@ -253,7 +253,7 @@ unsigned int bipartido(grafo *g) {
 
     zerarEstadosVertices(g);
     LIST_FOREACH(verticeIt, &g->vertices, entradas) {
-        if (verticeIt->estado == VERTICE_EM_V0)
+        if ((verticeIt->estado == VERTICE_EM_V0) && bipartido)
             bipartido = busca_bipartido(g, verticeIt);
         if (!(bipartido)) break;
     }
