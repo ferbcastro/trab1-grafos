@@ -57,11 +57,89 @@ struct vizinho {
     long peso;
 };
 
+/*
+ * lista auxiliar para guardar vértices
+ * estrutura definida para uso de ponteiros para lista.
+ */
+struct listaAuxiliar {
+    struct vertice *lh_first;
+};
+
 /* vetor global usado para salvar ponteiros de strings alocadas
  * usado para dar free em todas strings ao fim de le_grafo */
 char *hashStrings[HASH_MAX];
 unsigned int usadoHashStrings = 0;
-LIST_HEAD(listaAuxiliar, vertice) listaAuxiliar;
+
+void Merge(char **v, int a, int m, int b) {
+    int i, j, k, n1, n2;
+
+    n1 = m - a + 1;
+    n2 = b - m;
+
+    char **L = malloc(n1 * sizeof(char *));
+    char **R = malloc(n2 * sizeof(char *));
+    assert(L != NULL);
+    assert(R != NULL);
+
+    for (i = 0; i < n1; ++i) L[i] = v[a + i];
+    for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+    i = 0;
+    j = 0;
+    k = a;
+
+    while ((i < n1) && (j < n2)) {
+        if (strcmp(L[i], R[j]) < 0) {
+            v[k] = L[i];
+            i++;
+        } else {
+            v[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i < n1) {
+        v[k] = L[i];
+        i++;
+        k++;
+    }
+
+    while (j < n2) {
+        v[k] = R[j];
+        j++;
+        k++;
+    }
+
+    free(L);
+    free(R);
+}
+
+void MergeSort(char **v, int a, int b) {
+    if (a < b) {
+        int m = (a + b) / 2;
+        MergeSort(v, a, m);
+        MergeSort(v, m + 1, b);
+        Merge(v, a, m, b);
+    }
+}
+
+char **ordenaLista(void *headLista, int tamanho) {
+    char **v = malloc(tamanho * sizeof(char *));
+    if (v == NULL) return NULL;
+
+    int i = 0;
+    vertice *verticeIt;
+    struct listaAuxiliar *head = headLista;
+    LIST_FOREACH(verticeIt, head, entradasTmp) {
+        v[i] = verticeIt->nome;
+        i++;
+    }
+
+    MergeSort(v, 0, tamanho - 1);
+
+    return v;
+}
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     vertice *novoVertice;
@@ -143,7 +221,6 @@ grafo *le_grafo(FILE *f) {
 
     ENTRY *entryP1, *entryP2;
     hcreate(HASH_MAX);
-    LIST_INIT(&listaAuxiliar);
 
     fgets(grafoG->nome, TAM_LINHA_MAX, f);
     grafoG->nome[strlen(grafoG->nome) - 1] = '\0'; /* remover '\n' */
@@ -204,6 +281,7 @@ unsigned int destroi_grafo(grafo *g) {
         free(verticeIt);
     }
 
+    free(hashStrings[usadoHashStrings - 1]);
     free(g);
 
     return 1;
@@ -264,10 +342,12 @@ unsigned int n_componentes(grafo *g) {
 
 char *diametros(grafo *g) {}
 
-void lowpoint(grafo *g, vertice *raiz) {
+void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
     vertice *w;
     vizinho *vizinhoIt;
     raiz->estado = VERTICE_EM_V1;
+
+    struct listaAuxiliar *headp = listaAuxiliar;
 
     LIST_FOREACH(vizinhoIt, &raiz->vizinhos, entradas) {
         w = vizinhoIt->verticeRef;
@@ -277,14 +357,15 @@ void lowpoint(grafo *g, vertice *raiz) {
         } else if (w->estado == VERTICE_EM_V0) {
             w->pai = raiz;
             w->L = w->nivel = raiz->nivel + 1;
-            lowpoint(g, w);
+            lowpoint(g, w, headp, total);
             if (w->nivel <= raiz->nivel) {
                 raiz->nivel = w->nivel;
             } else {
                 if (raiz->corte == 0) {
                     raiz->corte = 1;
                     g->numVcorte++;
-                    LIST_INSERT_HEAD(&listaAuxiliar, raiz, entradasTmp);
+                    *total += strlen(raiz->nome) + 1;
+                    LIST_INSERT_HEAD(headp, raiz, entradasTmp);
                 }
             }
         }
@@ -300,16 +381,37 @@ char *vertices_corte(grafo *g) {
     zerarEstadosVertices(g);
     vertice *verticeIt;
 
+    LIST_HEAD(listaAuxiliar, vertice) listaAuxiliar;
+    LIST_INIT(&listaAuxiliar);
+    struct listaAuxiliar *headp = &listaAuxiliar;
+
+    long int total = 1;
     LIST_FOREACH(verticeIt, &g->vertices, entradas) {
         if (verticeIt->estado == VERTICE_EM_V0) {
             verticeIt->L = verticeIt->nivel = 0;
-            lowpoint(g, verticeIt);
+            lowpoint(g, verticeIt, headp, &total);
         }
     }
 
-    LIST_FOREACH(verticeIt, &listaAuxiliar, entradasTmp) { cont++; }
+    char **v = ordenaLista(headp, g->numVcorte);
 
-    return NULL;
+    char *s = malloc(total);
+    if (!(s)) {
+        free(v);
+        return NULL;
+    }
+    s[0] = '\0';
+
+    for (int i = 0; i < g->numVcorte; ++i) {
+        strcat(s, v[i]);
+        if (i < g->numVcorte - 1) strcat(s, " ");
+    }
+
+    hashStrings[usadoHashStrings++] = s;
+
+    free(v);
+
+    return s;
 }
 
 char *arestas_corte(grafo *g) {}
