@@ -361,7 +361,7 @@ void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
             w->L = w->nivel = raiz->nivel + 1;
             raiz->filhos++;
             lowpoint(g, w, headp, total);
-            if (w->nivel < raiz->nivel) {
+            if (w->nivel < raiz->L) {
                 raiz->nivel = w->nivel;
             } else {
                 if (raiz->corte == 0) {
