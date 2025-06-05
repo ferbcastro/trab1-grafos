@@ -49,6 +49,7 @@ struct vertice {
     vertice *pai;   /* Pai do vértice | para algoritmos */
     int L, nivel;   /*L(v) | l(v)*/
     int corte;      /*Indica se o vértice é de corte*/
+    int filhos;     /* Indica a quantidade de filhos na árvore. */
 };
 
 struct vizinho {
@@ -151,7 +152,7 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     novoVertice->nome[sizeof(novoVertice->nome) - 1] = '\0';
     novoVertice->pai = NULL;
     novoVertice->L = novoVertice->nivel = 0;
-    novoVertice->corte = 0;
+    novoVertice->corte = novoVertice->filhos = 0;
 
     if (LIST_EMPTY(&grafoP->vertices)) {
         LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
@@ -293,6 +294,7 @@ void zerarEstadosVertices(grafo *grafoP) {
         verticeIt->estado = VERTICE_EM_V0;
         verticeIt->pai = NULL;
         verticeIt->corte = 0;
+        verticeIt->filhos = 0;
     }
 }
 
@@ -357,8 +359,9 @@ void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
         } else if (w->estado == VERTICE_EM_V0) {
             w->pai = raiz;
             w->L = w->nivel = raiz->nivel + 1;
+            raiz->filhos++;
             lowpoint(g, w, headp, total);
-            if (w->nivel <= raiz->nivel) {
+            if (w->nivel < raiz->nivel) {
                 raiz->nivel = w->nivel;
             } else {
                 if (raiz->corte == 0) {
@@ -370,6 +373,7 @@ void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
             }
         }
     }
+
     raiz->estado = VERTICE_EM_V2;
 }
 
@@ -390,6 +394,11 @@ char *vertices_corte(grafo *g) {
         if (verticeIt->estado == VERTICE_EM_V0) {
             verticeIt->L = verticeIt->nivel = 0;
             lowpoint(g, verticeIt, headp, &total);
+            if ((verticeIt->corte) && (verticeIt->filhos == 1)) {
+                LIST_REMOVE(verticeIt, entradasTmp);
+                g->numVcorte--;
+                total -= strlen(verticeIt->nome) + 1;
+            }
         }
     }
 
