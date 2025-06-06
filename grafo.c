@@ -43,13 +43,13 @@ struct vertice {
     LIST_HEAD(listaVizinhos, vizinho) vizinhos;
     LIST_ENTRY(vertice) entradas;
     LIST_ENTRY(vertice)
-    entradasTmp;    /* usado para inserir vertice em outra fila */
-    char nome[128]; /* Nome do vértice */
-    long estado;    /* variavel auxiliar para algoritmos */
-    vertice *pai;   /* Pai do vértice | para algoritmos */
-    int L, nivel;   /*L(v) | l(v)*/
-    int corte;      /*Indica se o vértice é de corte*/
-    int filhos;     /* Indica a quantidade de filhos na árvore. */
+    entradasTmp;     /* usado para inserir vertice em outra fila */
+    char nome[128];  /* Nome do vértice */
+    long estado;     /* variavel auxiliar para algoritmos */
+    vertice *pai;    /* Pai do vértice | para algoritmos */
+    int L, lowpoint; /*L(v) | l(v)*/
+    int corte;       /*Indica se o vértice é de corte*/
+    int filhos;      /* Indica a quantidade de filhos na árvore. */
 };
 
 struct vizinho {
@@ -151,7 +151,7 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     strncpy(novoVertice->nome, entryP->key, sizeof(novoVertice->nome) - 1);
     novoVertice->nome[sizeof(novoVertice->nome) - 1] = '\0';
     novoVertice->pai = NULL;
-    novoVertice->L = novoVertice->nivel = 0;
+    novoVertice->L = novoVertice->lowpoint = 0;
     novoVertice->corte = novoVertice->filhos = 0;
 
     if (LIST_EMPTY(&grafoP->vertices)) {
@@ -353,16 +353,16 @@ void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
 
     LIST_FOREACH(vizinhoIt, &raiz->vizinhos, entradas) {
         w = vizinhoIt->verticeRef;
-        if ((w->estado == VERTICE_EM_V1) && (w->nivel < raiz->L) &&
+        if ((w->estado == VERTICE_EM_V1) && (w->lowpoint < raiz->L) &&
             w != raiz->pai) {
-            raiz->nivel = w->L;
+            raiz->lowpoint = w->L;
         } else if (w->estado == VERTICE_EM_V0) {
             w->pai = raiz;
-            w->L = w->nivel = raiz->nivel + 1;
+            w->L = w->lowpoint = raiz->lowpoint + 1;
             raiz->filhos++;
             lowpoint(g, w, headp, total);
-            if (w->nivel < raiz->L) {
-                raiz->nivel = w->nivel;
+            if (w->lowpoint < raiz->L) {
+                raiz->lowpoint = w->lowpoint;
             } else {
                 if (raiz->corte == 0) {
                     raiz->corte = 1;
@@ -392,7 +392,7 @@ char *vertices_corte(grafo *g) {
     long int total = 1;
     LIST_FOREACH(verticeIt, &g->vertices, entradas) {
         if (verticeIt->estado == VERTICE_EM_V0) {
-            verticeIt->L = verticeIt->nivel = 0;
+            verticeIt->L = verticeIt->lowpoint = 0;
             lowpoint(g, verticeIt, headp, &total);
             if ((verticeIt->corte) && (verticeIt->filhos == 1)) {
                 LIST_REMOVE(verticeIt, entradasTmp);
