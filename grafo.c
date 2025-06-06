@@ -44,12 +44,12 @@ struct vertice {
     LIST_ENTRY(vertice) entradas;
     LIST_ENTRY(vertice)
     entradasTmp;     /* usado para inserir vertice em outra fila */
-    char nome[128];  /* Nome do vértice */
     long estado;     /* variavel auxiliar para algoritmos */
     vertice *pai;    /* Pai do vértice | para algoritmos */
     int L, lowpoint; /*L(v) | l(v)*/
     int corte;       /*Indica se o vértice é de corte*/
     int filhos;      /* Indica a quantidade de filhos na árvore. */
+    char nome[];     /* Nome do vértice */
 };
 
 struct vizinho {
@@ -144,12 +144,12 @@ char **ordenaLista(void *headLista, int tamanho) {
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     vertice *novoVertice;
-    novoVertice = malloc(sizeof(vertice));
+    int len = strlen(entryP->key);
+    novoVertice = malloc(sizeof(vertice) + (len + 1) * sizeof(char));
     assert(novoVertice != NULL);
     LIST_INIT(&novoVertice->vizinhos);
 
-    strncpy(novoVertice->nome, entryP->key, sizeof(novoVertice->nome) - 1);
-    novoVertice->nome[sizeof(novoVertice->nome) - 1] = '\0';
+    memcpy(novoVertice->nome, entryP->key, (len + 1) * sizeof(char));
     novoVertice->pai = NULL;
     novoVertice->L = novoVertice->lowpoint = 0;
     novoVertice->corte = novoVertice->filhos = 0;
