@@ -220,19 +220,18 @@ int busca_bipartido(grafo *g, vertice *raiz) {
 
     LIST_HEAD(lista, vertice) lista;
     LIST_INIT(&lista);
-    raiz->pai = NULL;
     raiz->estado = VERTICE_EM_V1;
     LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
     ultimo = raiz;
 
-    while (!(LIST_EMPTY(&lista))) {
+    while (!(LIST_EMPTY(&lista)) && (bipartido)) {
         v = lista.lh_first;
         LIST_FOREACH(vizinhoIt, &v->vizinhos, entradas) {
             w = vizinhoIt->verticeRef;
             if (w->estado == v->estado) {
                 bipartido = 0;
+                break;
             } else if (w->estado == VERTICE_EM_V0) {
-                w->pai = v;
                 w->estado = (v->estado == VERTICE_EM_V1) ? VERTICE_EM_V2
                                                          : VERTICE_EM_V1;
                 LIST_INSERT_AFTER(ultimo, w, entradasTmp);
