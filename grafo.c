@@ -69,6 +69,7 @@ struct listaAuxiliar {
 /* vetor global usado para salvar ponteiros de strings alocadas
  * usado para dar free em todas strings ao fim de le_grafo */
 char *hashStrings[HASH_MAX];
+char *vertices_de_corte = NULL;
 unsigned int usadoHashStrings = 0;
 
 void Merge(char **v, int a, int m, int b) {
@@ -282,7 +283,7 @@ unsigned int destroi_grafo(grafo *g) {
         free(verticeIt);
     }
 
-    free(hashStrings[usadoHashStrings - 1]);
+    if (vertices_de_corte) free(vertices_de_corte);
     free(g);
 
     return 1;
@@ -380,6 +381,8 @@ void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
 char *vertices_corte(grafo *g) {
     if (g == NULL) return NULL;
 
+    if (vertices_de_corte != NULL) return vertices_de_corte;
+
     g->numVcorte = 0;
     int cont = 0;
     zerarEstadosVertices(g);
@@ -416,7 +419,7 @@ char *vertices_corte(grafo *g) {
         if (i < g->numVcorte - 1) strcat(s, " ");
     }
 
-    hashStrings[usadoHashStrings++] = s;
+    vertices_de_corte = s;
 
     free(v);
 
