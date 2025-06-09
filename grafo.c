@@ -72,59 +72,8 @@ char *hashStrings[HASH_MAX];
 char *vertices_de_corte = NULL;
 unsigned int usadoHashStrings = 0;
 
-void Merge(char **v, int a, int m, int b) {
-    int i, j, k, n1, n2;
-
-    n1 = m - a + 1;
-    n2 = b - m;
-
-    char **L = malloc(n1 * sizeof(char *));
-    char **R = malloc(n2 * sizeof(char *));
-    assert(L != NULL);
-    assert(R != NULL);
-
-    for (i = 0; i < n1; ++i) L[i] = v[a + i];
-    for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
-
-    i = 0;
-    j = 0;
-    k = a;
-
-    while ((i < n1) && (j < n2)) {
-        if (strcmp(L[i], R[j]) < 0) {
-            v[k] = L[i];
-            i++;
-        } else {
-            v[k] = R[j];
-            j++;
-        }
-        k++;
-    }
-
-    while (i < n1) {
-        v[k] = L[i];
-        i++;
-        k++;
-    }
-
-    while (j < n2) {
-        v[k] = R[j];
-        j++;
-        k++;
-    }
-
-    free(L);
-    free(R);
-}
-
-void MergeSort(char **v, int a, int b) {
-    if (a < b) {
-        int m = (a + b) / 2;
-        MergeSort(v, a, m);
-        MergeSort(v, m + 1, b);
-        Merge(v, a, m, b);
-    }
-}
+void Merge(char **v, int a, int m, int b);
+void MergeSort(char **v, int a, int b);
 
 char **ordenaLista(void *headLista, int tamanho) {
     char **v = malloc(tamanho * sizeof(char *));
@@ -427,3 +376,57 @@ char *vertices_corte(grafo *g) {
 }
 
 char *arestas_corte(grafo *g) {}
+
+void Merge(char **v, int a, int m, int b) {
+    int i, j, k, n1, n2;
+
+    n1 = m - a + 1;
+    n2 = b - m;
+
+    char **L = malloc(n1 * sizeof(char *));
+    char **R = malloc(n2 * sizeof(char *));
+    assert(L != NULL);
+    assert(R != NULL);
+
+    for (i = 0; i < n1; ++i) L[i] = v[a + i];
+    for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+    i = 0;
+    j = 0;
+    k = a;
+
+    while ((i < n1) && (j < n2)) {
+        if (strcmp(L[i], R[j]) < 0) {
+            v[k] = L[i];
+            i++;
+        } else {
+            v[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i < n1) {
+        v[k] = L[i];
+        i++;
+        k++;
+    }
+
+    while (j < n2) {
+        v[k] = R[j];
+        j++;
+        k++;
+    }
+
+    free(L);
+    free(R);
+}
+
+void MergeSort(char **v, int a, int b) {
+    if (a < b) {
+        int m = (a + b) / 2;
+        MergeSort(v, a, m);
+        MergeSort(v, m + 1, b);
+        Merge(v, a, m, b);
+    }
+}
