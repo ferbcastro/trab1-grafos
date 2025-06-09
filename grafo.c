@@ -30,6 +30,10 @@
 #define VERTICE_EM_V1 2
 #define VERTICE_EM_V2 3
 
+#define VERTICE_BRANCO 1
+#define VERTICE_AZUL 2
+#define VERTICE_VERMELHO 3
+
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
 
@@ -202,8 +206,7 @@ unsigned int destroi_grafo(grafo *g) {
     }
     free(g);
 
-    for (unsigned int i = 0; i < usadoStrings; i++)
-      free(strings[i]);
+    for (unsigned int i = 0; i < usadoStrings; i++) free(strings[i]);
 
     return 1;
 }
@@ -224,7 +227,7 @@ int busca_bipartido(grafo *g, vertice *raiz) {
 
     LIST_HEAD(lista, vertice) lista;
     LIST_INIT(&lista);
-    raiz->estado = VERTICE_EM_V1;
+    raiz->estado = VERTICE_VERMELHO;
     LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
     ultimo = raiz;
 
@@ -235,9 +238,9 @@ int busca_bipartido(grafo *g, vertice *raiz) {
             if (w->estado == v->estado) {
                 bipartido = 0;
                 break;
-            } else if (w->estado == VERTICE_EM_V0) {
-                w->estado = (v->estado == VERTICE_EM_V1) ? VERTICE_EM_V2
-                                                         : VERTICE_EM_V1;
+            } else if (w->estado == VERTICE_BRANCO) {
+                w->estado = (v->estado == VERTICE_VERMELHO) ? VERTICE_AZUL
+                                                            : VERTICE_VERMELHO;
                 LIST_INSERT_AFTER(ultimo, w, entradasTmp);
                 ultimo = w;
             }
@@ -256,7 +259,7 @@ unsigned int bipartido(grafo *g) {
 
     zerarEstadosVertices(g);
     LIST_FOREACH(verticeIt, &g->vertices, entradas) {
-        if ((verticeIt->estado == VERTICE_EM_V0) && bipartido)
+        if ((verticeIt->estado == VERTICE_BRANCO) && bipartido)
             bipartido = busca_bipartido(g, verticeIt);
         if (!(bipartido)) break;
     }
