@@ -29,8 +29,8 @@
 #define VERTICE_EM_V1 2
 #define VERTICE_EM_V2 3
 
-#define VERTICE_BRANCO VERTICE_EM_V0
-#define VERTICE_AZUL VERTICE_EM_V1
+#define VERTICE_BRANCO   VERTICE_EM_V0
+#define VERTICE_AZUL     VERTICE_EM_V1
 #define VERTICE_VERMELHO VERTICE_EM_V2
 
 typedef struct vertice vertice;
@@ -48,12 +48,12 @@ struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
   LIST_ENTRY(vertice) entradas;
   LIST_ENTRY(vertice) entradasTmp; /* usado para inserir vertice em outra fila */
-  vertice *pai;    /* Pai do vértice | para algoritmos */
-  long estado;     /* variavel auxiliar para algoritmos */
-  int L, lowpoint; /* L(v) | l(v) */
-  int corte;       /* Indica se o vértice é de corte*/
-  int filhos;      /* Indica a quantidade de filhos na árvore. */
-  char *nome;      /* Nome do vértice */
+  vertice *pai;                    /* Pai do vértice | para algoritmos */
+  long estado;                     /* variavel auxiliar para algoritmos */
+  int L, lowpoint;                 /* L(v) | l(v) */
+  int corte;                       /* Indica se o vértice é de corte */
+  int filhos;                      /* Indica a quantidade de filhos na árvore. */
+  char *nome;                      /* Nome do vértice */
 };
 
 struct vizinho {
@@ -77,7 +77,7 @@ void mergeSort(char **v, int a, int b);
 
 char **ordenaLista(void *headLista, int tamanho) {
   char **v = malloc(tamanho * sizeof(char *));
-  if (v == NULL) return NULL;
+  assert(v != NULL);
 
   int i = 0;
   vertice *verticeIt;
@@ -215,8 +215,6 @@ grafo *le_grafo(FILE *f) {
 }
 
 unsigned int destroi_grafo(grafo *g) {
-  if (g == NULL) return 0;
-
   vertice *verticeIt;
   vizinho *vizinhoIt;
   while (!LIST_EMPTY(&g->vertices)) {
@@ -249,27 +247,25 @@ void zerarEstadosVertices(grafo *grafoP) {
 
 char *nome(grafo *g) { return g->nome; }
 
-int busca_bipartido(grafo *g, vertice *raiz) {
-  int bipartido = 1;
+int buscaBipartido(grafo *g, vertice *raiz) {
   vertice *v, *w, *ultimo;
   vizinho *vizinhoIt;
 
   LIST_HEAD(lista, vertice) lista;
   LIST_INIT(&lista);
-  raiz->estado = VERTICE_VERMELHO;
   LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
+  raiz->estado = VERTICE_VERMELHO;
   ultimo = raiz;
 
-  while (!(LIST_EMPTY(&lista)) && (bipartido)) {
+  while (!LIST_EMPTY(&lista)) {
     v = lista.lh_first;
     LIST_FOREACH(vizinhoIt, &v->vizinhos, entradas) {
       w = vizinhoIt->verticeRef;
       if (w->estado == v->estado) {
-        bipartido = 0;
-        break;
+        return 0; /* vizinhos com mesma cor */
       } else if (w->estado == VERTICE_BRANCO) {
-        w->estado = (v->estado == VERTICE_VERMELHO) ? VERTICE_AZUL
-        : VERTICE_VERMELHO;
+        w->estado = (v->estado == VERTICE_VERMELHO) ? VERTICE_AZUL :
+          VERTICE_VERMELHO;
         LIST_INSERT_AFTER(ultimo, w, entradasTmp);
         ultimo = w;
       }
@@ -277,23 +273,19 @@ int busca_bipartido(grafo *g, vertice *raiz) {
     LIST_REMOVE(v, entradasTmp);
   }
 
-  return bipartido;
+  return 1;
 }
 
 unsigned int bipartido(grafo *g) {
-  if (g == NULL) return 0;
-
-  int bipartido = 1;
   vertice *verticeIt;
 
   zerarEstadosVertices(g);
   LIST_FOREACH(verticeIt, &g->vertices, entradas) {
-    if ((verticeIt->estado == VERTICE_BRANCO) && bipartido)
-    bipartido = busca_bipartido(g, verticeIt);
-    if (!(bipartido)) break;
+    if (verticeIt->estado == VERTICE_BRANCO)
+      if (!buscaBipartido(g, verticeIt)) return 0;
   }
 
-  return bipartido;
+  return 1;
 }
 
 unsigned int n_vertices(grafo *g) { return g->numV; }
