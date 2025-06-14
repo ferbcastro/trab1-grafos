@@ -24,7 +24,6 @@
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
-#define STRINGS_BASE 1 << 6
 #define STRINGS_MAX 1 << 18
 #define VERTICE_EM_V0 1
 #define VERTICE_EM_V1 2
@@ -48,19 +47,17 @@ struct grafo {
 struct vertice {
   LIST_HEAD(listaVizinhos, vizinho) vizinhos;
   LIST_ENTRY(vertice) entradas;
-  LIST_ENTRY(vertice)
-  entradasTmp;     /* usado para inserir vertice em outra fila */
-  long estado;     /* variavel auxiliar para algoritmos */
+  LIST_ENTRY(vertice) entradasTmp; /* usado para inserir vertice em outra fila */
   vertice *pai;    /* Pai do vértice | para algoritmos */
-  int L, lowpoint; /* L(v) | l(v)*/
+  long estado;     /* variavel auxiliar para algoritmos */
+  int L, lowpoint; /* L(v) | l(v) */
   int corte;       /* Indica se o vértice é de corte*/
   int filhos;      /* Indica a quantidade de filhos na árvore. */
   char *nome;      /* Nome do vértice */
 };
 
 struct vizinho {
-  /* cada vizinho eh referente a um vertice */
-  vertice *verticeRef;
+  vertice *verticeRef; /* cada vizinho eh referente a um vertice */
   LIST_ENTRY(vizinho) entradas;
   long peso;
 };
@@ -73,11 +70,6 @@ struct listaAuxiliar {
   struct vertice *lh_first;
 };
 
-/* vetor global usado para salvar ponteiros de strings alocadas
-* usado para dar free em todas strings ao fim de le_grafo */
-char **strings = NULL;
-unsigned int usadoStrings = 0;
-unsigned int tamanhoAtual = 0;
 char *vertices_de_corte = NULL;
 
 void Merge(char **v, int a, int m, int b);
@@ -111,17 +103,6 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   novoVertice->nome = entryP->key;
   novoVertice->L = novoVertice->lowpoint = 0;
   novoVertice->corte = novoVertice->filhos = 0;
-  strings[usadoStrings++] = entryP->key;
-
-  if (usadoStrings >= tamanhoAtual) {
-    tamanhoAtual = tamanhoAtual * 2;
-    char **tmp = realloc(strings, tamanhoAtual * sizeof(char *));
-    if (tmp == NULL) {
-      fprintf(stderr, "Falha na realocação de strings.\n");
-      exit(EXIT_FAILURE);
-    }
-    strings = tmp;
-  }
 
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
@@ -188,9 +169,6 @@ grafo *le_grafo(FILE *f) {
   LIST_INIT(&grafoG->vertices);
   grafoG->numV = grafoG->numA = grafoG->numVcorte = 0;
 
-  tamanhoAtual = STRINGS_BASE;
-  strings = malloc(tamanhoAtual * sizeof(char *));
-
   ENTRY *entryP1, *entryP2;
   hcreate(STRINGS_MAX);
 
@@ -249,14 +227,9 @@ unsigned int destroi_grafo(grafo *g) {
     }
     verticeIt = g->vertices.lh_first;
     LIST_REMOVE(verticeIt, entradas);
+    free(verticeIt->nome);
     free(verticeIt);
   }
-
-  for (int i = 0; i < usadoStrings; ++i) {
-    free(strings[i]);
-  }
-
-  if (strings) free(strings);
 
   if (vertices_de_corte) free(vertices_de_corte);
   free(g);
