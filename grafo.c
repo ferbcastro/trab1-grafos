@@ -70,10 +70,10 @@ struct listaAuxiliar {
   struct vertice *lh_first;
 };
 
-char *vertices_de_corte = NULL;
+char *verticesCorte = NULL;
 
-void Merge(char **v, int a, int m, int b);
-void MergeSort(char **v, int a, int b);
+void merge(char **v, int a, int m, int b);
+void mergeSort(char **v, int a, int b);
 
 char **ordenaLista(void *headLista, int tamanho) {
   char **v = malloc(tamanho * sizeof(char *));
@@ -87,7 +87,7 @@ char **ordenaLista(void *headLista, int tamanho) {
     i++;
   }
 
-  MergeSort(v, 0, tamanho - 1);
+  mergeSort(v, 0, tamanho - 1);
 
   return v;
 }
@@ -231,7 +231,7 @@ unsigned int destroi_grafo(grafo *g) {
     free(verticeIt);
   }
 
-  if (vertices_de_corte) free(vertices_de_corte);
+  if (verticesCorte) free(verticesCorte);
   free(g);
 
   return 1;
@@ -374,7 +374,7 @@ void componente(vertice *v) {
   char *vertices_corte(grafo *g) {
     if (g == NULL) return NULL;
 
-    if (vertices_de_corte != NULL) return vertices_de_corte;
+    if (verticesCorte != NULL) return verticesCorte;
 
     g->numVcorte = 0;
     int cont = 0;
@@ -412,7 +412,7 @@ void componente(vertice *v) {
       if (i < g->numVcorte - 1) strcat(s, " ");
     }
 
-    vertices_de_corte = s;
+    verticesCorte = s;
 
     free(v);
 
@@ -421,7 +421,7 @@ void componente(vertice *v) {
 
   char *arestas_corte(grafo *g) {}
 
-  void Merge(char **v, int a, int m, int b) {
+  void merge(char **v, int a, int m, int b) {
     int i, j, k, n1, n2;
 
     n1 = m - a + 1;
@@ -466,11 +466,11 @@ void componente(vertice *v) {
     free(R);
   }
 
-  void MergeSort(char **v, int a, int b) {
+  void mergeSort(char **v, int a, int b) {
     if (a < b) {
       int m = (a + b) / 2;
-      MergeSort(v, a, m);
-      MergeSort(v, m + 1, b);
-      Merge(v, a, m, b);
+      mergeSort(v, a, m);
+      mergeSort(v, m + 1, b);
+      merge(v, a, m, b);
     }
   }
