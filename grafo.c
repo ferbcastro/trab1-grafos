@@ -168,18 +168,21 @@ grafo *le_grafo(FILE *f) {
   assert(grafoG != NULL);
   LIST_INIT(&grafoG->vertices);
   grafoG->numV = grafoG->numA = grafoG->numVcorte = 0;
+  grafoG->nome[0] = '\0';
 
   ENTRY *entryP1, *entryP2;
   hcreate(STRINGS_MAX);
 
-  fgets(grafoG->nome, TAM_LINHA_MAX, f);
-  grafoG->nome[strlen(grafoG->nome) - 1] = '\0'; /* remover '\n' */
-  DEBUG_PRINT("Nome do grafo [%s]\n", grafoG->nome);
   while (fgets(line, TAM_LINHA_MAX, f)) {
     line[strlen(line) - 1] = '\0'; /* remover '\n' */
     if (line[0] == '\0') continue; /* ignora linha em branco */
     if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO)))
       continue; /* ignora comentario */
+
+    if (grafoG->nome[0] == '\0') {
+      strcpy(grafoG->nome, line);
+      continue;
+    }
 
     char *substring = strtok(line, ESPACO);
     entryP1 = verificaVertice(substring, grafoG);
@@ -304,14 +307,13 @@ void componente(vertice *v) {
     LIST_FOREACH(vizinhoIt, &verticeIt->vizinhos, entradas) {
       if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
         vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
-        LIST_INSERT_AFTER(verticeIt, vizinhoIt->verticeRef,
-          entradasTmp);
-        }
+        LIST_INSERT_AFTER(verticeIt, vizinhoIt->verticeRef, entradasTmp);
       }
-      LIST_REMOVE(verticeIt, entradasTmp);
-      verticeIt->estado = VERTICE_EM_V2;
     }
+    LIST_REMOVE(verticeIt, entradasTmp);
+    verticeIt->estado = VERTICE_EM_V2;
   }
+}
 
   unsigned int n_componentes(grafo *g) {
     unsigned int cont = 0;
