@@ -24,8 +24,7 @@
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
-#define HASH_MAX 1 << 18
-#define STRINGS_MAX 4
+#define STRINGS_MAX 1 << 18
 #define VERTICE_EM_V0 1
 #define VERTICE_EM_V1 2
 #define VERTICE_EM_V2 3
@@ -56,7 +55,7 @@ struct vertice {
     int L, lowpoint; /* L(v) | l(v)*/
     int corte;       /* Indica se o vértice é de corte*/
     int filhos;      /* Indica a quantidade de filhos na árvore. */
-    char nome[];     /* Nome do vértice */
+    char *nome;      /* Nome do vértice */
 };
 
 struct vizinho {
@@ -111,6 +110,7 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     novoVertice->nome = entryP->key;
     novoVertice->L = novoVertice->lowpoint = 0;
     novoVertice->corte = novoVertice->filhos = 0;
+    strings[usadoStrings++] = entryP->key;
 
     if (LIST_EMPTY(&grafoP->vertices)) {
         LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
@@ -178,7 +178,7 @@ grafo *le_grafo(FILE *f) {
     grafoG->numV = grafoG->numA = grafoG->numVcorte = 0;
 
     ENTRY *entryP1, *entryP2;
-    hcreate(HASH_MAX);
+    hcreate(STRINGS_MAX);
 
     fgets(grafoG->nome, TAM_LINHA_MAX, f);
     grafoG->nome[strlen(grafoG->nome) - 1] = '\0'; /* remover '\n' */
@@ -218,7 +218,7 @@ grafo *le_grafo(FILE *f) {
     }
 
     hdestroy();
-  
+
     return grafoG;
 }
 
@@ -236,6 +236,10 @@ unsigned int destroi_grafo(grafo *g) {
         verticeIt = g->vertices.lh_first;
         LIST_REMOVE(verticeIt, entradas);
         free(verticeIt);
+    }
+
+    for (int i = 0; i < usadoStrings; ++i) {
+        free(strings[i]);
     }
 
     if (vertices_de_corte) free(vertices_de_corte);
@@ -425,8 +429,6 @@ char *vertices_corte(grafo *g) {
 
     return s;
 }
-
-char *arestas_corte(grafo *g) {}
 
 char *arestas_corte(grafo *g) {}
 
