@@ -24,6 +24,7 @@
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
+#define STRINGS_BASE 1 << 6
 #define STRINGS_MAX 1 << 18
 #define VERTICE_EM_V0 1
 #define VERTICE_EM_V1 2
@@ -75,8 +76,9 @@ struct listaAuxiliar {
 
 /* vetor global usado para salvar ponteiros de strings alocadas
  * usado para dar free em todas strings ao fim de le_grafo */
-char *strings[STRINGS_MAX];
+char **strings = NULL;
 unsigned int usadoStrings = 0;
+unsigned int tamanhoAtual = 0;
 char *vertices_de_corte = NULL;
 
 void Merge(char **v, int a, int m, int b);
@@ -111,6 +113,16 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     novoVertice->L = novoVertice->lowpoint = 0;
     novoVertice->corte = novoVertice->filhos = 0;
     strings[usadoStrings++] = entryP->key;
+
+    if (usadoStrings >= tamanhoAtual) {
+        tamanhoAtual = tamanhoAtual * 2;
+        char **tmp = realloc(strings, tamanhoAtual * sizeof(char *));
+        if (tmp == NULL) {
+            fprintf(stderr, "Falha na realocação de strings.\n");
+            exit(EXIT_FAILURE);
+        }
+        strings = tmp;
+    }
 
     if (LIST_EMPTY(&grafoP->vertices)) {
         LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
@@ -177,6 +189,9 @@ grafo *le_grafo(FILE *f) {
     LIST_INIT(&grafoG->vertices);
     grafoG->numV = grafoG->numA = grafoG->numVcorte = 0;
 
+    tamanhoAtual = STRINGS_BASE;
+    strings = malloc(tamanhoAtual * sizeof(char *));
+
     ENTRY *entryP1, *entryP2;
     hcreate(STRINGS_MAX);
 
@@ -241,6 +256,8 @@ unsigned int destroi_grafo(grafo *g) {
     for (int i = 0; i < usadoStrings; ++i) {
         free(strings[i]);
     }
+
+    if (strings) free(strings);
 
     if (vertices_de_corte) free(vertices_de_corte);
     free(g);
