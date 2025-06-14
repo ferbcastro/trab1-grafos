@@ -20,13 +20,19 @@
 #endif
 
 #define TAM_LINHA_MAX 2047
+#define NOME_MAX 128
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
-#define HASH_MAX 1 << 20
+#define HASH_MAX 1 << 18
+#define STRINGS_MAX 4
 #define VERTICE_EM_V0 1
 #define VERTICE_EM_V1 2
 #define VERTICE_EM_V2 3
+
+#define VERTICE_BRANCO VERTICE_EM_V0
+#define VERTICE_AZUL VERTICE_EM_V1
+#define VERTICE_VERMELHO VERTICE_EM_V2
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
@@ -36,6 +42,7 @@ struct grafo {
     LIST_HEAD(listaVertices, vertice) vertices;
     unsigned int numV;
     unsigned int numA;
+
     unsigned int numVcorte;
 };
 
@@ -46,14 +53,15 @@ struct vertice {
     entradasTmp;     /* usado para inserir vertice em outra fila */
     long estado;     /* variavel auxiliar para algoritmos */
     vertice *pai;    /* Pai do vértice | para algoritmos */
-    int L, lowpoint; /*L(v) | l(v)*/
-    int corte;       /*Indica se o vértice é de corte*/
+    int L, lowpoint; /* L(v) | l(v)*/
+    int corte;       /* Indica se o vértice é de corte*/
     int filhos;      /* Indica a quantidade de filhos na árvore. */
     char nome[];     /* Nome do vértice */
 };
 
 struct vizinho {
-    vertice *verticeRef; /* cada vizinho eh referente a um vertice */
+    /* cada vizinho eh referente a um vertice */
+    vertice *verticeRef;
     LIST_ENTRY(vizinho) entradas;
     long peso;
 };
@@ -68,9 +76,9 @@ struct listaAuxiliar {
 
 /* vetor global usado para salvar ponteiros de strings alocadas
  * usado para dar free em todas strings ao fim de le_grafo */
-char *hashStrings[HASH_MAX];
+char *strings[STRINGS_MAX];
+unsigned int usadoStrings = 0;
 char *vertices_de_corte = NULL;
-unsigned int usadoHashStrings = 0;
 
 void Merge(char **v, int a, int m, int b);
 void MergeSort(char **v, int a, int b);
@@ -95,12 +103,12 @@ char **ordenaLista(void *headLista, int tamanho) {
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
     vertice *novoVertice;
     int len = strlen(entryP->key);
-    novoVertice = malloc(sizeof(vertice) + (len + 1) * sizeof(char));
+    novoVertice = malloc(sizeof(vertice));
     assert(novoVertice != NULL);
     LIST_INIT(&novoVertice->vizinhos);
 
-    memcpy(novoVertice->nome, entryP->key, (len + 1) * sizeof(char));
     novoVertice->pai = NULL;
+    novoVertice->nome = entryP->key;
     novoVertice->L = novoVertice->lowpoint = 0;
     novoVertice->corte = novoVertice->filhos = 0;
 
@@ -121,7 +129,6 @@ ENTRY *verificaVertice(char *sub, grafo *grafoP) {
     if (entryP == NULL) { /* entrada nao mapeada pelo hash map */
         DEBUG_PRINT("Entrada [%s] nao encontrada\n", entry.key);
         entry.key = strdup(sub); /* sub eh temporario, precisa ser duplicado */
-        hashStrings[usadoHashStrings++] = entry.key;
 
         adicionarVertice(&entry, grafoP);
         entryP = hsearch(entry, FIND);
@@ -211,8 +218,7 @@ grafo *le_grafo(FILE *f) {
     }
 
     hdestroy();
-    for (unsigned int i = 0; i < usadoHashStrings; i++) free(hashStrings[i]);
-
+  
     return grafoG;
 }
 
@@ -250,7 +256,52 @@ void zerarEstadosVertices(grafo *grafoP) {
 
 char *nome(grafo *g) { return g->nome; }
 
-unsigned int bipartido(grafo *g) {}
+int busca_bipartido(grafo *g, vertice *raiz) {
+    int bipartido = 1;
+    vertice *v, *w, *ultimo;
+    vizinho *vizinhoIt;
+
+    LIST_HEAD(lista, vertice) lista;
+    LIST_INIT(&lista);
+    raiz->estado = VERTICE_VERMELHO;
+    LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
+    ultimo = raiz;
+
+    while (!(LIST_EMPTY(&lista)) && (bipartido)) {
+        v = lista.lh_first;
+        LIST_FOREACH(vizinhoIt, &v->vizinhos, entradas) {
+            w = vizinhoIt->verticeRef;
+            if (w->estado == v->estado) {
+                bipartido = 0;
+                break;
+            } else if (w->estado == VERTICE_BRANCO) {
+                w->estado = (v->estado == VERTICE_VERMELHO) ? VERTICE_AZUL
+                                                            : VERTICE_VERMELHO;
+                LIST_INSERT_AFTER(ultimo, w, entradasTmp);
+                ultimo = w;
+            }
+        }
+        LIST_REMOVE(v, entradasTmp);
+    }
+
+    return bipartido;
+}
+
+unsigned int bipartido(grafo *g) {
+    if (g == NULL) return 0;
+
+    int bipartido = 1;
+    vertice *verticeIt;
+
+    zerarEstadosVertices(g);
+    LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+        if ((verticeIt->estado == VERTICE_BRANCO) && bipartido)
+            bipartido = busca_bipartido(g, verticeIt);
+        if (!(bipartido)) break;
+    }
+
+    return bipartido;
+}
 
 unsigned int n_vertices(grafo *g) { return g->numV; }
 
@@ -374,6 +425,8 @@ char *vertices_corte(grafo *g) {
 
     return s;
 }
+
+char *arestas_corte(grafo *g) {}
 
 char *arestas_corte(grafo *g) {}
 
