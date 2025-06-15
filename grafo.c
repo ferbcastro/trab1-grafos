@@ -61,15 +61,13 @@ struct vertice {
 };
 
 struct vizinho {
-  /* cada vizinho eh referente a um vertice */
-  vertice *verticeRef;
+  vertice *verticeRef; /* cada vizinho eh referente a um vertice */
   LIST_ENTRY(vizinho) entradas;
   long peso;
   char *nome;
 };
 
 long totalBytes;
-long pos;
 char *verticesCorte = NULL;
 char *arestasCorte  = NULL;
 
@@ -156,11 +154,14 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
   strcat(vizinho1->nome, first);
   strcat(vizinho1->nome, " ");
   strcat(vizinho1->nome, second);
+
+  DEBUG_PRINT("Nome vizinhanca [%s]\n", vizinho2->nome);
 }
 
 grafo *le_grafo(FILE *f) {
   grafo *grafoG;
   char line[TAM_LINHA_MAX];
+  char *auxP;
   int peso;
 
   grafoG = malloc(sizeof(grafo));
@@ -173,9 +174,10 @@ grafo *le_grafo(FILE *f) {
   hcreate(STRINGS_MAX);
 
   while (fgets(line, TAM_LINHA_MAX, f)) {
-    line[strlen(line) - 1] = '\0'; /* remover '\n' */
+    auxP = strchr(line, '\n');
+    if (auxP != NULL) *auxP = '\0'; /* remover '\n' */
     if (line[0] == '\0') continue; /* ignora linha em branco */
-    if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO)))
+    if (!strncmp(COMENTARIO, line, sizeof(COMENTARIO)-1))
       continue; /* ignora comentario */
 
     if (grafoG->nome[0] == '\0') {
@@ -189,7 +191,7 @@ grafo *le_grafo(FILE *f) {
 
     substring = strtok(NULL, ESPACO);
     if (substring != NULL) { /* se ha algo mais, deve ser string ARESTA */
-      assert(!strncmp(ARESTA, substring, sizeof(ARESTA)));
+      assert(!strncmp(ARESTA, substring, sizeof(ARESTA)-1));
       grafoG->numA++;
     } else { /* vertice isolado */
       continue;
@@ -223,6 +225,12 @@ unsigned int destroi_grafo(grafo *g) {
     while (!LIST_EMPTY(&g->vertices.lh_first->vizinhos)) {
       vizinhoIt = g->vertices.lh_first->vizinhos.lh_first;
       LIST_REMOVE(vizinhoIt, entradas);
+      /* nome do vizinho eh marcado com '\0' para evitar double free */
+      if (vizinhoIt->nome[0] == '\0') {
+        free(vizinhoIt->nome);
+      } else {
+        vizinhoIt->nome[0] = '\0';
+      }
       free(vizinhoIt);
     }
     verticeIt = g->vertices.lh_first;
@@ -330,8 +338,6 @@ unsigned int n_componentes(grafo *g) {
 
 char *diametros(grafo *g) {}
 
-char **ordenaLista(void *headLista, int tamanho);
-
 /* algoritmo de low point modificado para encontrar vertices
  * ou arestas de corte; objetivo eh indicado no ultimo parametro */
 void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
@@ -343,12 +349,12 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
 
   raizEspecial = primeiraChamada;
   primeiraChamada = FALSE;
-
   raiz->estado = VERTICE_EM_V1;
+
   LIST_FOREACH(vizinhoIt, &raiz->vizinhos, entradas) {
     w = vizinhoIt->verticeRef;
     if ((w->estado == VERTICE_EM_V1) &&
-        (w->lowPoint < raiz->L) &&
+        (w->L < raiz->lowPoint) &&
         (w != raiz->pai)) {
       raiz->lowPoint = w->L;
     }
@@ -362,20 +368,19 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
       raiz->lowPoint = w->lowPoint;
     }
     if (w->lowPoint >= raiz->L) {
+      DEBUG_PRINT("Raiz [%s] de corte: w->low [%d], raiz->nivel[%d], raiz especial[%d]\n", w->lowPoint, raiz->L, raizEspecial);
       if ((obj == VERTICES_CORTE) && (raiz->corte == FALSE)) {
-        if (raizEspecial) {
+        if (raizEspecial == TRUE) {
           raizFilhos++;
           if (raizFilhos < 2) continue;
         }
 
         raiz->corte = TRUE;
-        g->numVcorte++;
         totalBytes += strlen(raiz->nome) + 1;
-        strings[pos++] = raiz->nome;
+        strings[g->numVcorte++] = raiz->nome;
       } else {
-        strings[pos++] = vizinhoIt->nome;
+        strings[g->numAcorte++] = vizinhoIt->nome;
         totalBytes += strlen(vizinhoIt->nome);
-        g->numAcorte++;
       }
     }
   }
@@ -388,26 +393,27 @@ void mergeSort(char **v, int a, int b);
 char *lowPointComponentes(grafo *grafoG, int objetivo) {
   char *string;
   unsigned int *numCorte;
+  char **strings;
+  size_t tamStrings;
+  vertice *verticeIt;
+
   if (objetivo == VERTICES_CORTE) {
     string = verticesCorte;
     numCorte = &grafoG->numVcorte;
+    tamStrings = grafoG->numV;
   } else {
     string = arestasCorte;
     numCorte = &grafoG->numAcorte;
+    tamStrings = grafoG->numA;
   }
 
   if (string != NULL) return string;
 
-  char **strings;
-  vertice *verticeIt;
-  int ini;
-
-  strings = malloc(sizeof(char*) * grafoG->numV);
+  strings = malloc(sizeof(char*) * tamStrings);
   assert(strings != NULL);
 
   *numCorte = 0;
   totalBytes = 0;
-  pos = ini = 0;
   zerarEstadosVertices(grafoG);
   LIST_FOREACH(verticeIt, &grafoG->vertices, entradas) {
     if (verticeIt->estado == VERTICE_EM_V0) {
