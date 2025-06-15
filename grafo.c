@@ -155,7 +155,7 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
   strcat(vizinho1->nome, " ");
   strcat(vizinho1->nome, second);
 
-  DEBUG_PRINT("Nome vizinhanca [%s]\n", vizinho2->nome);
+  DEBUG_PRINT("Nome vizinhanca [%s], tam [%ld]\n", vizinho2->nome, tam);
 }
 
 grafo *le_grafo(FILE *f) {
@@ -240,6 +240,7 @@ unsigned int destroi_grafo(grafo *g) {
   }
 
   if (verticesCorte) free(verticesCorte);
+  if (arestasCorte) free(arestasCorte);
   free(g);
 
   return 1;
@@ -382,7 +383,7 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
 
       } else if (obj == ARESTAS_CORTE) {
         strings[g->numAcorte++] = vizinhoIt->nome;
-        totalBytes += strlen(vizinhoIt->nome);
+        totalBytes += strlen(vizinhoIt->nome) + 1;
       }
     }
   }
@@ -439,11 +440,13 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
 }
 
 char *vertices_corte(grafo *g) {
-  return lowPointComponentes(g, VERTICES_CORTE);
+  verticesCorte = lowPointComponentes(g, VERTICES_CORTE);
+  return verticesCorte;
 }
 
 char *arestas_corte(grafo *g) {
-  return lowPointComponentes(g, ARESTAS_CORTE);
+  arestasCorte = lowPointComponentes(g, ARESTAS_CORTE);
+  return arestasCorte;
 }
 
 void merge(char **v, int a, int m, int b) {
