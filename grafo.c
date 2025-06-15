@@ -20,7 +20,11 @@
 #endif
 
 #define TAM_LINHA_MAX 2047
-#define NOME_MAX 128
+#define STRINGS_BASE 1 << 6
+#define STRINGS_MAX 1 << 18
+#define TRUE  1
+#define FALSE 0
+
 #define ESPACO " "
 #define COMENTARIO "//"
 #define ARESTA "--"
@@ -49,15 +53,15 @@ struct vertice {
   LIST_ENTRY(vertice) entradas;
   LIST_ENTRY(vertice) entradasTmp; /* usado para inserir vertice em outra fila */
   vertice *pai;                    /* Pai do vértice | para algoritmos */
-  long estado;                     /* variavel auxiliar para algoritmos */
-  int L, lowpoint;                 /* L(v) | l(v) */
-  int corte;                       /* Indica se o vértice é de corte */
-  int filhos;                      /* Indica a quantidade de filhos na árvore. */
-  char *nome;                      /* Nome do vértice */
+  char estado;                     /* variavel auxiliar para algoritmos */
+  char L, lowPoint;                /* L(v) | l(v) */
+  char corte;                      /* Indica se o vértice é de corte */
+  char *nome;
 };
 
 struct vizinho {
-  vertice *verticeRef; /* cada vizinho eh referente a um vertice */
+  /* cada vizinho eh referente a um vertice */
+  vertice *verticeRef;
   LIST_ENTRY(vizinho) entradas;
   long peso;
 };
@@ -70,27 +74,16 @@ struct listaAuxiliar {
   struct vertice *lh_first;
 };
 
-char *verticesCorte = NULL;
-
-void merge(char **v, int a, int m, int b);
-void mergeSort(char **v, int a, int b);
-
-char **ordenaLista(void *headLista, int tamanho) {
-  char **v = malloc(tamanho * sizeof(char *));
-  assert(v != NULL);
-
-  int i = 0;
-  vertice *verticeIt;
-  struct listaAuxiliar *head = headLista;
-  LIST_FOREACH(verticeIt, head, entradasTmp) {
-    v[i] = verticeIt->nome;
-    i++;
+int contaVizinhos(vertice *v) {
+  int cont = 0;
+  vizinho *itV;
+  LIST_FOREACH(itV, &v->vizinhos, entradas) {
+    cont++;
   }
-
-  mergeSort(v, 0, tamanho - 1);
-
-  return v;
+  return cont;
 }
+
+char *verticesCorte = NULL;
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
@@ -99,11 +92,9 @@ void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   assert(novoVertice != NULL);
   LIST_INIT(&novoVertice->vizinhos);
 
-  novoVertice->pai = NULL;
   novoVertice->nome = entryP->key;
-  novoVertice->L = novoVertice->lowpoint = 0;
-  novoVertice->corte = novoVertice->filhos = 0;
-
+  novoVertice->L = novoVertice->lowPoint = 0;
+  novoVertice->corte = FALSE;
   if (LIST_EMPTY(&grafoP->vertices)) {
     LIST_INSERT_HEAD(&grafoP->vertices, novoVertice, entradas);
   } else {
@@ -243,8 +234,7 @@ void zerarEstadosVertices(grafo *grafoP) {
   LIST_FOREACH(verticeIt, &grafoP->vertices, entradas) {
     verticeIt->estado = VERTICE_EM_V0;
     verticeIt->pai = NULL;
-    verticeIt->corte = 0;
-    verticeIt->filhos = 0;
+    verticeIt->corte = FALSE;
   }
 }
 
@@ -315,156 +305,173 @@ void componente(vertice *v) {
   }
 }
 
-  unsigned int n_componentes(grafo *g) {
-    unsigned int cont = 0;
+unsigned int n_componentes(grafo *g) {
+  unsigned int cont = 0;
 
-    zerarEstadosVertices(g);
-    vertice *verticeIt;
-    LIST_FOREACH(verticeIt, &g->vertices, entradas) {
-      if (verticeIt->estado == VERTICE_EM_V0) {
-        componente(verticeIt);
-        cont++;
-      }
+  zerarEstadosVertices(g);
+  vertice *verticeIt;
+  LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+    if (verticeIt->estado == VERTICE_EM_V0) {
+      componente(verticeIt);
+      cont++;
     }
-
-    return cont;
   }
 
-  char *diametros(grafo *g) {}
+  return cont;
+}
 
-  void lowpoint(grafo *g, vertice *raiz, void *listaAuxiliar, long int *total) {
-    vertice *w;
-    vizinho *vizinhoIt;
-    raiz->estado = VERTICE_EM_V1;
+char *diametros(grafo *g) {}
 
-    struct listaAuxiliar *headp = listaAuxiliar;
+char **ordenaLista(void *headLista, int tamanho);
 
-    LIST_FOREACH(vizinhoIt, &raiz->vizinhos, entradas) {
-      w = vizinhoIt->verticeRef;
-      if ((w->estado == VERTICE_EM_V1) && (w->lowpoint < raiz->L) &&
-      w != raiz->pai) {
-        raiz->lowpoint = w->L;
-      } else if (w->estado == VERTICE_EM_V0) {
-        w->pai = raiz;
-        w->L = w->lowpoint = raiz->lowpoint + 1;
-        raiz->filhos++;
-        lowpoint(g, w, headp, total);
-        if (w->lowpoint < raiz->L) {
-          raiz->lowpoint = w->lowpoint;
-        } else {
-          if (raiz->corte == 0) {
-            raiz->corte = 1;
-            g->numVcorte++;
-            *total += strlen(raiz->nome) + 1;
-            LIST_INSERT_HEAD(headp, raiz, entradasTmp);
-          }
-        }
-      }
-    }
+void lowPoint(grafo *g, vertice *raiz, void *listaAuxiliar, long *total) {
+  vertice *w;
+  vizinho *vizinhoIt;
 
-    raiz->estado = VERTICE_EM_V2;
-  }
+  struct listaAuxiliar *headp = listaAuxiliar;
 
-  char *vertices_corte(grafo *g) {
-    if (g == NULL) return NULL;
-
-    if (verticesCorte != NULL) return verticesCorte;
-
-    g->numVcorte = 0;
-    int cont = 0;
-    zerarEstadosVertices(g);
-    vertice *verticeIt;
-
-    LIST_HEAD(listaAuxiliar, vertice) listaAuxiliar;
-    LIST_INIT(&listaAuxiliar);
-    struct listaAuxiliar *headp = &listaAuxiliar;
-
-    long int total = 1;
-    LIST_FOREACH(verticeIt, &g->vertices, entradas) {
-      if (verticeIt->estado == VERTICE_EM_V0) {
-        verticeIt->L = verticeIt->lowpoint = 0;
-        lowpoint(g, verticeIt, headp, &total);
-        if ((verticeIt->corte) && (verticeIt->filhos == 1)) {
-          LIST_REMOVE(verticeIt, entradasTmp);
-          g->numVcorte--;
-          total -= strlen(verticeIt->nome) + 1;
-        }
-      }
-    }
-
-    char **v = ordenaLista(headp, g->numVcorte);
-
-    char *s = malloc(total);
-    if (!(s)) {
-      free(v);
-      return NULL;
-    }
-    s[0] = '\0';
-
-    for (int i = 0; i < g->numVcorte; ++i) {
-      strcat(s, v[i]);
-      if (i < g->numVcorte - 1) strcat(s, " ");
-    }
-
-    verticesCorte = s;
-
-    free(v);
-
-    return s;
-  }
-
-  char *arestas_corte(grafo *g) {}
-
-  void merge(char **v, int a, int m, int b) {
-    int i, j, k, n1, n2;
-
-    n1 = m - a + 1;
-    n2 = b - m;
-
-    char **L = malloc(n1 * sizeof(char *));
-    char **R = malloc(n2 * sizeof(char *));
-    assert(L != NULL);
-    assert(R != NULL);
-
-    for (i = 0; i < n1; ++i) L[i] = v[a + i];
-    for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
-
-    i = 0;
-    j = 0;
-    k = a;
-
-    while ((i < n1) && (j < n2)) {
-      if (strcmp(L[i], R[j]) < 0) {
-        v[k] = L[i];
-        i++;
+  raiz->estado = VERTICE_EM_V1;
+  LIST_FOREACH(vizinhoIt, &raiz->vizinhos, entradas) {
+    w = vizinhoIt->verticeRef;
+    if ((w->estado == VERTICE_EM_V1) &&
+        (w->lowPoint < raiz->L) &&
+        (w != raiz->pai)) {
+      raiz->lowPoint = w->L;
+    } else if (w->estado == VERTICE_EM_V0) {
+      w->pai = raiz;
+      w->L = w->lowPoint = raiz->lowPoint + 1; // raiz->nivel + 1 (?)
+      lowPoint(g, w, headp, total);
+      if (w->lowPoint < raiz->L) {
+        raiz->lowPoint = w->lowPoint;
       } else {
-        v[k] = R[j];
-        j++;
+        if (raiz->corte == FALSE) {
+          raiz->corte = TRUE;
+          g->numVcorte++;
+          *total += strlen(raiz->nome) + 1;
+          LIST_INSERT_HEAD(headp, raiz, entradasTmp);
+        }
       }
-      k++;
     }
+  }
 
-    while (i < n1) {
+  raiz->estado = VERTICE_EM_V2;
+}
+
+char *vertices_corte(grafo *g) {
+  if (verticesCorte != NULL) return verticesCorte;
+
+  g->numVcorte = 0;
+  int cont = 0;
+  zerarEstadosVertices(g);
+  vertice *verticeIt;
+
+  LIST_HEAD(listaAuxiliar, vertice) listaAuxiliar;
+  LIST_INIT(&listaAuxiliar);
+  struct listaAuxiliar *headp = &listaAuxiliar;
+
+  long int total = 1;
+  LIST_FOREACH(verticeIt, &g->vertices, entradas) {
+    if (verticeIt->estado == VERTICE_EM_V0) {
+      verticeIt->L = verticeIt->lowPoint = 0;
+      lowPoint(g, verticeIt, headp, &total);
+      /* raiz da arvore eh um caso especial */
+      if ((verticeIt->corte == TRUE) && (contaVizinhos(verticeIt) > 1)) {
+        LIST_REMOVE(verticeIt, entradasTmp);
+        g->numVcorte--;
+        total -= strlen(verticeIt->nome) + 1;
+      }
+    }
+  }
+
+  char **v = ordenaLista(headp, g->numVcorte);
+
+  char *s = malloc(total);
+  assert(s != NULL);
+  s[0] = '\0';
+
+  for (int i = 0; i < g->numVcorte; ++i) {
+    strcat(s, v[i]);
+    if (i < g->numVcorte - 1) strcat(s, " ");
+  }
+
+  verticesCorte = s;
+
+  free(v);
+
+  return s;
+}
+
+char *arestas_corte(grafo *g) {
+
+}
+
+void merge(char **v, int a, int m, int b) {
+  int i, j, k, n1, n2;
+
+  n1 = m - a + 1;
+  n2 = b - m;
+
+  char **L = malloc(n1 * sizeof(char *));
+  char **R = malloc(n2 * sizeof(char *));
+  assert(L != NULL);
+  assert(R != NULL);
+
+  for (i = 0; i < n1; ++i) L[i] = v[a + i];
+  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+  i = 0;
+  j = 0;
+  k = a;
+
+  while ((i < n1) && (j < n2)) {
+    if (strcmp(L[i], R[j]) < 0) {
       v[k] = L[i];
       i++;
-      k++;
-    }
-
-    while (j < n2) {
+    } else {
       v[k] = R[j];
       j++;
-      k++;
     }
-
-    free(L);
-    free(R);
+    k++;
   }
 
-  void mergeSort(char **v, int a, int b) {
-    if (a < b) {
-      int m = (a + b) / 2;
-      mergeSort(v, a, m);
-      mergeSort(v, m + 1, b);
-      merge(v, a, m, b);
-    }
+  while (i < n1) {
+    v[k] = L[i];
+    i++;
+    k++;
   }
+
+  while (j < n2) {
+    v[k] = R[j];
+    j++;
+    k++;
+  }
+
+  free(L);
+  free(R);
+}
+
+void mergeSort(char **v, int a, int b) {
+  if (a < b) {
+    int m = (a + b) / 2;
+    mergeSort(v, a, m);
+    mergeSort(v, m + 1, b);
+    merge(v, a, m, b);
+  }
+}
+
+char **ordenaLista(void *headLista, int tamanho) {
+  char **v = malloc(tamanho * sizeof(char *));
+  assert(v != NULL);
+
+  int i = 0;
+  vertice *verticeIt;
+  struct listaAuxiliar *head = headLista;
+  LIST_FOREACH(verticeIt, head, entradasTmp) {
+    v[i] = verticeIt->nome;
+    i++;
+  }
+
+  mergeSort(v, 0, tamanho - 1);
+
+  return v;
+}
