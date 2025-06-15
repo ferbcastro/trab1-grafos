@@ -83,7 +83,21 @@ char *verticesCorte = NULL;
 char *arestasCorte = NULL;
 char *diametrosString = NULL;
 
-void mergeSort(char **v, int a, int b);
+int comparaLongMenor(void *a, void *b) {
+  long *numA, *numB;
+  numA = (long*)a;
+  numB = (long*)b;
+  return (*numA < *numB);
+}
+
+int comparaStringMenor(void *a, void *b) {
+  char *stringA, *stringB;
+  stringA = (char *)a;
+  stringB = (char *)b;
+  return (strcmp(stringA, stringB) < 0);
+}
+
+void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b));
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
@@ -460,7 +474,7 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-  mergeSort(strings, 0, *numCorte - 1);
+  mergeSort(strings, 0, *numCorte - 1, comparaStringMenor);
   string = malloc(totalBytes);
   assert(string != NULL);
   string[0] = '\0';
@@ -484,7 +498,7 @@ char *arestas_corte(grafo *g) {
   return arestasCorte;
 }
 
-void merge(char **v, int a, int m, int b) {
+void merge(char **v, int a, int m, int b, int (*compara)(void *a, void *b)) {
   int i, j, k, n1, n2;
 
   n1 = m - a + 1;
@@ -503,7 +517,7 @@ void merge(char **v, int a, int m, int b) {
   k = a;
 
   while ((i < n1) && (j < n2)) {
-    if (strcmp(L[i], R[j]) < 0) {
+    if (compara(L[i], R[j])) {
       v[k] = L[i];
       i++;
     } else {
@@ -529,12 +543,12 @@ void merge(char **v, int a, int m, int b) {
   free(R);
 }
 
-void mergeSort(char **v, int a, int b) {
+void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b)) {
   if (a < b) {
     int m = (a + b) / 2;
-    mergeSort(v, a, m);
-    mergeSort(v, m + 1, b);
-    merge(v, a, m, b);
+    mergeSort(v, a, m, compara);
+    mergeSort(v, m + 1, b, compara);
+    merge(v, a, m, b, compara);
   }
 }
 
