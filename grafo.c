@@ -368,8 +368,9 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
       raiz->lowPoint = w->lowPoint;
     }
     if (w->lowPoint >= raiz->L) {
-      DEBUG_PRINT("Raiz [%s] de corte: w->low [%d], raiz->nivel[%d], raiz especial[%d]\n", w->lowPoint, raiz->L, raizEspecial);
-      if ((obj == VERTICES_CORTE) && (raiz->corte == FALSE)) {
+      if (obj == VERTICES_CORTE) {
+        if (raiz->corte == TRUE) continue;
+
         if (raizEspecial == TRUE) {
           raizFilhos++;
           if (raizFilhos < 2) continue;
@@ -378,7 +379,8 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
         raiz->corte = TRUE;
         totalBytes += strlen(raiz->nome) + 1;
         strings[g->numVcorte++] = raiz->nome;
-      } else {
+
+      } else if (obj == ARESTAS_CORTE) {
         strings[g->numAcorte++] = vizinhoIt->nome;
         totalBytes += strlen(vizinhoIt->nome);
       }
@@ -422,7 +424,6 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-
   mergeSort(strings, 0, *numCorte - 1);
   string = malloc(totalBytes);
   assert(string != NULL);
@@ -430,6 +431,7 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
   for (int i = 0; i < *numCorte; ++i) {
     strcat(string, strings[i]);
     if (i < *numCorte - 1) strcat(string, " ");
+    DEBUG_PRINT("%s\n", strings[i]);
   }
   free(strings);
 
