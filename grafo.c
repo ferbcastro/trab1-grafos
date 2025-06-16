@@ -103,7 +103,7 @@ void componenteF(vertice *v, componente *c);
 void lowPoint(grafo *g, vertice *raiz, char **strings, int obj);
 char *lowPointComponentes(grafo *grafoG, int objetivo);
 char *strdup (const char *s);
-unsigned int logDez(long n);
+unsigned int digitosCont(long n);
 
 int comparaLongMenor(void *a, void *b) {
   long *numA, *numB;
@@ -375,7 +375,7 @@ void componenteF(vertice *v, componente *c) {
       if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
         vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
         LIST_INSERT_AFTER(verticeIt, vizinhoIt->verticeRef, entradasTmp);
-        LIST_INSERT_AFTER(verticeIt, c->vertices.lh_first, entradasComponentes);
+        LIST_INSERT_AFTER(c->vertices.lh_first, vizinhoIt->verticeRef, entradasComponentes);
       }
     }
     LIST_REMOVE(verticeIt, entradasTmp);
@@ -532,18 +532,18 @@ void mergeSort(void *v, unsigned int a, unsigned int b, int tipoDosElementos) {
   }
 }
 
-/* nome feio para evitar conflito com log10 de math.h */
-unsigned int logDez(long n) {
+unsigned int digitosCont(long n) {
   unsigned int cont = 0;
   while(n /= 10) cont++;
-  return cont;
+  return cont + 1;
 }
 
 char *diametros(grafo *g) {
   long *diametros;
   long diametrosIt = 0;
+  long stringIt = 0;
   long ret;
-  unsigned int log;
+  unsigned int digitos;
 
   if (diametrosString != NULL) return diametrosString;
 
@@ -572,17 +572,17 @@ char *diametros(grafo *g) {
     diametrosIt++;
   }
 
-  mergeSort(diametros, 0, g->numComponentes, ELEMENTOS_TIPO_LONG);
-  log = logDez(diametros[g->numComponentes-1]);
-  diametrosString = malloc((log + 1) * g->numComponentes);
+  mergeSort(diametros, 0, g->numComponentes-1, ELEMENTOS_TIPO_LONG);
+  digitos = digitosCont(diametros[g->numComponentes-1]);
+  diametrosString = malloc((digitos + 1) * g->numComponentes);
   assert(diametrosString != NULL);
-  char *string = malloc(log + 1);
-  assert(string != NULL);
-  for (unsigned int i = 0; i < g->numComponentes; i++) {
-    sprintf(string, "%ld", diametros[i]);
-    strcat(diametrosString, string);
-    if (i < g->numComponentes - 1) strcat(diametrosString, " ");
+
+  for (unsigned int i = 0; i < g->numComponentes - 1; i++) {
+    stringIt += sprintf(&diametrosString[stringIt], "%ld ", diametros[i]);
   }
+  sprintf(&diametrosString[stringIt], "%ld", diametros[g->numComponentes - 1]);
+
+  free(diametros);
 
   return diametrosString;
 }
@@ -605,7 +605,7 @@ long buscaLargura(vertice *raiz) {
       if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
         vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
         vizinhoIt->verticeRef->dist = verticeIt->dist + 1;
-        LIST_INSERT_AFTER(vizinhoIt->verticeRef, ultimoIt, entradasTmp);
+        LIST_INSERT_AFTER(ultimoIt, vizinhoIt->verticeRef, entradasTmp);
         ultimoIt = vizinhoIt->verticeRef;
       }
     }
