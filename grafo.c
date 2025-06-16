@@ -297,9 +297,6 @@ unsigned int destroi_grafo(grafo *g) {
     free(componenteIt);
   }
 
-  if (verticesCorte) free(verticesCorte);
-  if (arestasCorte) free(arestasCorte);
-  if (diametrosString) free(diametrosString);
   free(g);
 
   return 1;
