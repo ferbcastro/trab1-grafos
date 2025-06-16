@@ -37,6 +37,9 @@
 #define VERTICE_AZUL VERTICE_EM_V1
 #define VERTICE_VERMELHO VERTICE_EM_V2
 
+#define ELEMENTOS_TIPO_LONG 1
+#define ELEMENTOS_TIPO_STRING 2
+
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
 typedef struct componente componente;
@@ -86,7 +89,9 @@ char *diametrosString = NULL;
 
 long buscaLargura(vertice *raiz);
 long buscaDijkstra(vertice *raiz);
-void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b));
+void mergeStrings(char **v, unsigned int a, unsigned int m, unsigned int b);
+void mergeLongs(long *v, unsigned int a, unsigned int m, unsigned int b);
+void mergeSort(void *v, unsigned int a, unsigned int b, int tipoDosElementos);
 int comparaLongMenor(void *a, void *b);
 int comparaStringMenor(void *a, void *b);
 void adicionarVertice(ENTRY *entryP, grafo *grafoP);
@@ -98,6 +103,7 @@ void componenteF(vertice *v, componente *c);
 void lowPoint(grafo *g, vertice *raiz, char **strings, int obj);
 char *lowPointComponentes(grafo *grafoG, int objetivo);
 char *strdup (const char *s);
+unsigned int logDez(long n);
 
 int comparaLongMenor(void *a, void *b) {
   long *numA, *numB;
@@ -465,7 +471,7 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
   if (objetivo == VERTICES_CORTE) {
     string = verticesCorte;
     numCorte = &grafoG->numVcorte;
-    tamStrings = grafoG->numV;
+    tamStrings = (size_t)grafoG->numV;
   } else {
     string = arestasCorte;
     numCorte = &grafoG->numAcorte;
@@ -487,11 +493,11 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-  mergeSort(strings, 0, *numCorte - 1, comparaStringMenor);
+  mergeSort(strings, 0, *numCorte - 1, ELEMENTOS_TIPO_STRING);
   string = malloc(totalBytes);
   assert(string != NULL);
   string[0] = '\0';
-  for (int i = 0; i < *numCorte; ++i) {
+  for (unsigned int i = 0; i < *numCorte; ++i) {
     strcat(string, strings[i]);
     if (i < *numCorte - 1) strcat(string, " ");
     DEBUG_PRINT("%s\n", strings[i]);
@@ -511,64 +517,33 @@ char *arestas_corte(grafo *g) {
   return arestasCorte;
 }
 
-void merge(char **v, int a, int m, int b, int (*compara)(void *a, void *b)) {
-  int i, j, k, n1, n2;
-
-  n1 = m - a + 1;
-  n2 = b - m;
-
-  char **L = malloc(n1 * sizeof(char *));
-  char **R = malloc(n2 * sizeof(char *));
-  assert(L != NULL);
-  assert(R != NULL);
-
-  for (i = 0; i < n1; ++i) L[i] = v[a + i];
-  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
-
-  i = 0;
-  j = 0;
-  k = a;
-
-  while ((i < n1) && (j < n2)) {
-    if (compara(L[i], R[j])) {
-      v[k] = L[i];
-      i++;
-    } else {
-      v[k] = R[j];
-      j++;
+void mergeSort(void *v, unsigned int a, unsigned int b, int tipoDosElementos) {
+  if (a < b) {
+    unsigned int m = (a + b) / 2;
+    mergeSort(v, a, m, tipoDosElementos);
+    mergeSort(v, m + 1, b, tipoDosElementos);
+    if (tipoDosElementos == ELEMENTOS_TIPO_LONG) {
+      char **strings = v;
+      mergeStrings(strings, a, m, b);
+    } else if (tipoDosElementos == ELEMENTOS_TIPO_STRING) {
+      long *longs = v;
+      mergeLongs(longs, a, m, b);
     }
-    k++;
   }
-
-  while (i < n1) {
-    v[k] = L[i];
-    i++;
-    k++;
-  }
-
-  while (j < n2) {
-    v[k] = R[j];
-    j++;
-    k++;
-  }
-
-  free(L);
-  free(R);
 }
 
-void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b)) {
-  if (a < b) {
-    int m = (a + b) / 2;
-    mergeSort(v, a, m, compara);
-    mergeSort(v, m + 1, b, compara);
-    merge(v, a, m, b, compara);
-  }
+/* nome feio para evitar conflito com log10 de math.h */
+unsigned int logDez(long n) {
+  unsigned int cont = 0;
+  while(n /= 10) cont++;
+  return cont;
 }
 
 char *diametros(grafo *g) {
   long *diametros;
   long diametrosIt = 0;
   long ret;
+  unsigned int log;
 
   if (diametrosString != NULL) return diametrosString;
 
@@ -578,7 +553,6 @@ char *diametros(grafo *g) {
   diametros = malloc(sizeof(long) * g->numComponentes);
   assert(diametros != NULL);
   memset(diametros, 0, sizeof(long) * g->numComponentes);
-  totalBytes = 0;
 
   componente *componenteIt;
   vertice *verticeIt;
@@ -598,8 +572,17 @@ char *diametros(grafo *g) {
     diametrosIt++;
   }
 
-  diametrosString = malloc(totalBytes);
+  mergeSort(diametros, 0, g->numComponentes, ELEMENTOS_TIPO_LONG);
+  log = logDez(diametros[g->numComponentes-1]);
+  diametrosString = malloc((log + 1) * g->numComponentes);
   assert(diametrosString != NULL);
+  char *string = malloc(log + 1);
+  assert(string != NULL);
+  for (unsigned int i = 0; i < g->numComponentes; i++) {
+    sprintf(string, "%ld", diametros[i]);
+    strcat(diametrosString, string);
+    if (i < g->numComponentes - 1) strcat(diametrosString, " ");
+  }
 
   return diametrosString;
 }
@@ -662,7 +645,6 @@ long buscaDijkstra(vertice *raiz) {
           }
         }
         LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
-
       } else if (vizinhoIt->verticeRef->estado == VERTICE_EM_V1) {
         if (verticeIt->custo + vizinhoIt->peso < vizinhoIt->verticeRef->custo) {
           vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
@@ -681,4 +663,94 @@ char *strdup (const char *s) {
   void *new = malloc (len);
   assert(new != NULL);
   return (char *)memcpy (new, s, len);
+}
+
+void mergeStrings(char **v, unsigned int a, unsigned int m, unsigned int b) {
+  unsigned int i, j, k, n1, n2;
+
+  n1 = m - a + 1;
+  n2 = b - m;
+
+  char **L = malloc(n1 * sizeof(char *));
+  char **R = malloc(n2 * sizeof(char *));
+  assert(L != NULL);
+  assert(R != NULL);
+
+  for (i = 0; i < n1; ++i) L[i] = v[a + i];
+  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+  i = 0;
+  j = 0;
+  k = a;
+
+  while ((i < n1) && (j < n2)) {
+    if (strcmp(L[i], R[j]) < 0) {
+      v[k] = L[i];
+      i++;
+    } else {
+      v[k] = R[j];
+      j++;
+    }
+    k++;
+  }
+
+  while (i < n1) {
+    v[k] = L[i];
+    i++;
+    k++;
+  }
+
+  while (j < n2) {
+    v[k] = R[j];
+    j++;
+    k++;
+  }
+
+  free(L);
+  free(R);
+}
+
+void mergeLongs(long *v, unsigned int a, unsigned int m, unsigned int b) {
+  unsigned int i, j, k, n1, n2;
+
+  n1 = m - a + 1;
+  n2 = b - m;
+
+  long *L = malloc(n1 * sizeof(long));
+  long *R = malloc(n2 * sizeof(long));
+  assert(L != NULL);
+  assert(R != NULL);
+
+  for (i = 0; i < n1; ++i) L[i] = v[a + i];
+  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+  i = 0;
+  j = 0;
+  k = a;
+
+  while ((i < n1) && (j < n2)) {
+    if (L[i] < R[j]) {
+      v[k] = L[i];
+      i++;
+    } else {
+      v[k] = R[j];
+      j++;
+    }
+    k++;
+  }
+
+  while (i < n1) {
+    v[k] = L[i];
+    i++;
+    k++;
+  }
+
+  while (j < n2) {
+    v[k] = R[j];
+    j++;
+    k++;
+  }
+
+  free(L);
+  free(R);
 }
