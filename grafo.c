@@ -605,10 +605,10 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
 
   LIST_HEAD(lista, vertice) lista;
   LIST_INIT(&lista);
+  LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
+
   raiz->custo = 0;
   raiz->estado = VERTICE_EM_V1;
-
-  LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
   vertice *verticeIt;
   vizinho *vizinhoIt;
   while (!LIST_EMPTY(&lista)) {
@@ -620,7 +620,16 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
       if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
         vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
         vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
+
         // inserir ordenado
+        vertice* iteradorLista;
+        LIST_FOREACH(iteradorLista, &lista, entradasTmp) {
+          if (vizinhoIt->verticeRef->custo < iteradorLista->custo) {
+            break;
+          }
+        }
+        LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
+        
       } else if (vizinhoIt->verticeRef->estado == VERTICE_EM_V1) {
         if (verticeIt->custo + vizinhoIt->peso < vizinhoIt->verticeRef->custo) {
           vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
