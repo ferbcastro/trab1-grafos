@@ -490,15 +490,20 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-  mergeSort(strings, 0, *numCorte - 1, ELEMENTOS_TIPO_STRING);
-  string = malloc(totalBytes);
-  assert(string != NULL);
-  string[0] = '\0';
-  for (unsigned int i = 0; i < *numCorte; ++i) {
-    strcat(string, strings[i]);
-    if (i < *numCorte - 1) strcat(string, " ");
-    DEBUG_PRINT("%s\n", strings[i]);
+  if (totalBytes == 0) {
+    string = strdup(ESPACO);
+  } else {
+    mergeSort(strings, 0, *numCorte - 1, ELEMENTOS_TIPO_STRING);
+    string = malloc(totalBytes);
+    assert(string != NULL);
+    string[0] = '\0';
+    for (unsigned int i = 0; i < *numCorte; ++i) {
+      strcat(string, strings[i]);
+      if (i < *numCorte - 1) strcat(string, " ");
+      DEBUG_PRINT("%s\n", strings[i]);
+    }
   }
+
   free(strings);
 
   return string;
@@ -512,21 +517,6 @@ char *vertices_corte(grafo *g) {
 char *arestas_corte(grafo *g) {
   arestasCorte = lowPointComponentes(g, ARESTAS_CORTE);
   return arestasCorte;
-}
-
-void mergeSort(void *v, unsigned int a, unsigned int b, int tipoDosElementos) {
-  if (a < b) {
-    unsigned int m = (a + b) / 2;
-    mergeSort(v, a, m, tipoDosElementos);
-    mergeSort(v, m + 1, b, tipoDosElementos);
-    if (tipoDosElementos == ELEMENTOS_TIPO_LONG) {
-      char **strings = v;
-      mergeStrings(strings, a, m, b);
-    } else if (tipoDosElementos == ELEMENTOS_TIPO_STRING) {
-      long *longs = v;
-      mergeLongs(longs, a, m, b);
-    }
-  }
 }
 
 unsigned int digitosCont(long n) {
@@ -664,6 +654,21 @@ char *strdup (const char *s) {
   void *new = malloc (len);
   assert(new != NULL);
   return (char *)memcpy (new, s, len);
+}
+
+void mergeSort(void *v, unsigned int a, unsigned int b, int tipoDosElementos) {
+  if (a < b) {
+    unsigned int m = (a + b) / 2;
+    mergeSort(v, a, m, tipoDosElementos);
+    mergeSort(v, m + 1, b, tipoDosElementos);
+    if (tipoDosElementos == ELEMENTOS_TIPO_STRING) {
+      char **strings = v;
+      mergeStrings(strings, a, m, b);
+    } else if (tipoDosElementos == ELEMENTOS_TIPO_LONG) {
+      long *longs = v;
+      mergeLongs(longs, a, m, b);
+    }
+  }
 }
 
 void mergeStrings(char **v, unsigned int a, unsigned int m, unsigned int b) {
