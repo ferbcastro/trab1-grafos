@@ -37,6 +37,9 @@
 #define VERTICE_AZUL VERTICE_EM_V1
 #define VERTICE_VERMELHO VERTICE_EM_V2
 
+#define ELEMENTO_TIPO_LONG 1
+#define ELEMENTO_TIPO_STRING 2
+
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
 typedef struct componente componente;
@@ -97,7 +100,9 @@ int comparaStringMenor(void *a, void *b) {
   return (strcmp(stringA, stringB) < 0);
 }
 
-void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b));
+void mergeStrings(char **v, int a, int m, int b);
+void mergeLongs(long *v, int a, int m, int b);
+void mergeSort(void *v, int a, int b, int tipoDosElementos);
 
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
@@ -474,7 +479,7 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-  mergeSort(strings, 0, *numCorte - 1, comparaStringMenor);
+  mergeSort(strings, 0, *numCorte - 1, ELEMENTO_TIPO_STRING);
   string = malloc(totalBytes);
   assert(string != NULL);
   string[0] = '\0';
@@ -498,57 +503,18 @@ char *arestas_corte(grafo *g) {
   return arestasCorte;
 }
 
-void merge(char **v, int a, int m, int b, int (*compara)(void *a, void *b)) {
-  int i, j, k, n1, n2;
-
-  n1 = m - a + 1;
-  n2 = b - m;
-
-  char **L = malloc(n1 * sizeof(char *));
-  char **R = malloc(n2 * sizeof(char *));
-  assert(L != NULL);
-  assert(R != NULL);
-
-  for (i = 0; i < n1; ++i) L[i] = v[a + i];
-  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
-
-  i = 0;
-  j = 0;
-  k = a;
-
-  while ((i < n1) && (j < n2)) {
-    if (compara(L[i], R[j])) {
-      v[k] = L[i];
-      i++;
-    } else {
-      v[k] = R[j];
-      j++;
-    }
-    k++;
-  }
-
-  while (i < n1) {
-    v[k] = L[i];
-    i++;
-    k++;
-  }
-
-  while (j < n2) {
-    v[k] = R[j];
-    j++;
-    k++;
-  }
-
-  free(L);
-  free(R);
-}
-
-void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b)) {
+void mergeSort(void *v, int a, int b, int tipoDosElementos) {
   if (a < b) {
     int m = (a + b) / 2;
-    mergeSort(v, a, m, compara);
-    mergeSort(v, m + 1, b, compara);
-    merge(v, a, m, b, compara);
+    mergeSort(v, a, m, tipoDosElementos);
+    mergeSort(v, m + 1, b, tipoDosElementos);
+    if (tipoDosElementos == ELEMENTO_TIPO_LONG) {
+      char **strings = v;
+      mergeStrings(strings, a, m, b);
+    } else if (tipoDosElementos == ELEMENTO_TIPO_STRING) {
+      long *longs = v;
+      mergeLongs(longs, a, m, b);
+    }
   }
 }
 
@@ -629,7 +595,6 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
           }
         }
         LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
-        
       } else if (vizinhoIt->verticeRef->estado == VERTICE_EM_V1) {
         if (verticeIt->custo + vizinhoIt->peso < vizinhoIt->verticeRef->custo) {
           vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
@@ -641,4 +606,94 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
   }
 
   return maiorCusto;
+}
+
+void mergeStrings(char **v, int a, int m, int b) {
+  int i, j, k, n1, n2;
+
+  n1 = m - a + 1;
+  n2 = b - m;
+
+  char **L = malloc(n1 * sizeof(char *));
+  char **R = malloc(n2 * sizeof(char *));
+  assert(L != NULL);
+  assert(R != NULL);
+
+  for (i = 0; i < n1; ++i) L[i] = v[a + i];
+  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+  i = 0;
+  j = 0;
+  k = a;
+
+  while ((i < n1) && (j < n2)) {
+    if (strcmp(L[i], R[j]) < 0) {
+      v[k] = L[i];
+      i++;
+    } else {
+      v[k] = R[j];
+      j++;
+    }
+    k++;
+  }
+
+  while (i < n1) {
+    v[k] = L[i];
+    i++;
+    k++;
+  }
+
+  while (j < n2) {
+    v[k] = R[j];
+    j++;
+    k++;
+  }
+
+  free(L);
+  free(R);
+}
+
+void mergeLongs(long *v, int a, int m, int b) {
+  int i, j, k, n1, n2;
+
+  n1 = m - a + 1;
+  n2 = b - m;
+
+  long *L = malloc(n1 * sizeof(long));
+  long *R = malloc(n2 * sizeof(long));
+  assert(L != NULL);
+  assert(R != NULL);
+
+  for (i = 0; i < n1; ++i) L[i] = v[a + i];
+  for (j = 0; j < n2; ++j) R[j] = v[m + 1 + j];
+
+  i = 0;
+  j = 0;
+  k = a;
+
+  while ((i < n1) && (j < n2)) {
+    if (L[i] < R[j]) {
+      v[k] = L[i];
+      i++;
+    } else {
+      v[k] = R[j];
+      j++;
+    }
+    k++;
+  }
+
+  while (i < n1) {
+    v[k] = L[i];
+    i++;
+    k++;
+  }
+
+  while (j < n2) {
+    v[k] = R[j];
+    j++;
+    k++;
+  }
+
+  free(L);
+  free(R);
 }
