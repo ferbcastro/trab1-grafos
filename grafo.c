@@ -69,6 +69,7 @@ struct vertice {
   char corte;       /* Indica se o vértice é de corte */
   char *nome;
   long custo;
+  int dist;
 };
 
 struct vizinho {
@@ -78,10 +79,25 @@ struct vizinho {
   char *nome;
 };
 
-long totalBytes;
+size_t totalBytes;
 char *verticesCorte = NULL;
 char *arestasCorte = NULL;
 char *diametrosString = NULL;
+
+long buscaLargura(vertice *raiz);
+long buscaDijkstra(vertice *raiz);
+void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b));
+int comparaLongMenor(void *a, void *b);
+int comparaStringMenor(void *a, void *b);
+void adicionarVertice(ENTRY *entryP, grafo *grafoP);
+ENTRY *verificaVertice(char *sub, grafo *grafoP);
+void adicionarVizinho(int peso, vertice *vp1, vertice *vp2);
+int buscaBipartido(vertice *raiz);
+void zerarEstadosVertices(grafo *grafoP);
+void componenteF(vertice *v, componente *c);
+void lowPoint(grafo *g, vertice *raiz, char **strings, int obj);
+char *lowPointComponentes(grafo *grafoG, int objetivo);
+char *strdup (const char *s);
 
 int comparaLongMenor(void *a, void *b) {
   long *numA, *numB;
@@ -97,11 +113,8 @@ int comparaStringMenor(void *a, void *b) {
   return (strcmp(stringA, stringB) < 0);
 }
 
-void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b));
-
 void adicionarVertice(ENTRY *entryP, grafo *grafoP) {
   vertice *novoVertice;
-  int len = strlen(entryP->key);
   novoVertice = malloc(sizeof(vertice));
   assert(novoVertice != NULL);
   LIST_INIT(&novoVertice->vizinhos);
@@ -166,7 +179,7 @@ void adicionarVizinho(int peso, vertice *vp1, vertice *vp2) {
   }
 
   /* sizeof('\0') + sizeof(' ') = 2 */
-  long tam = strlen(vp1->nome) + strlen(vp2->nome) + 2;
+  size_t tam = strlen(vp1->nome) + strlen(vp2->nome) + 2;
   vizinho1->nome = malloc(tam);
   assert(vizinho1->nome != NULL);
   vizinho2->nome = vizinho1->nome;
@@ -298,7 +311,7 @@ void zerarEstadosVertices(grafo *grafoP) {
 
 char *nome(grafo *g) { return g->nome; }
 
-int buscaBipartido(grafo *g, vertice *raiz) {
+int buscaBipartido(vertice *raiz) {
   vertice *v, *w, *ultimo;
   vizinho *vizinhoIt;
 
@@ -333,7 +346,7 @@ unsigned int bipartido(grafo *g) {
   zerarEstadosVertices(g);
   LIST_FOREACH(verticeIt, &g->vertices, entradasVertices) {
     if (verticeIt->estado == VERTICE_BRANCO)
-      if (!buscaBipartido(g, verticeIt)) return 0;
+      if (!buscaBipartido(verticeIt)) return 0;
   }
 
   return 1;
@@ -552,9 +565,6 @@ void mergeSort(char **v, int a, int b, int (*compara)(void *a, void *b)) {
   }
 }
 
-long buscaLargura(grafo *grafoG, vertice *raiz);
-long buscaDijkstra(grafo *grafoG, vertice *raiz);
-
 char *diametros(grafo *g) {
   long *diametros;
   long diametrosIt = 0;
@@ -576,9 +586,9 @@ char *diametros(grafo *g) {
     LIST_FOREACH(verticeIt, &componenteIt->vertices, entradasComponentes) {
       zerarEstadosVertices(g);
       if (g->ehPonderado == TRUE) {
-        ret = buscaDijkstra(g, verticeIt);
+        ret = buscaDijkstra(verticeIt);
       } else {
-        ret = buscaLargura(g, verticeIt);
+        ret = buscaLargura(verticeIt);
       }
       if (ret > diametros[diametrosIt]) {
         diametros[diametrosIt] = ret;
@@ -594,13 +604,36 @@ char *diametros(grafo *g) {
   return diametrosString;
 }
 
-long buscaLargura(grafo *grafoG, vertice *raiz) {
-  long maiorDist = 0;
+long buscaLargura(vertice *raiz) {
+  vertice *ultimoIt;
 
-  return maiorDist;
+  LIST_HEAD(lista, vertice) lista;
+  LIST_INIT(&lista);
+  LIST_INSERT_HEAD(&lista, raiz, entradasTmp);
+  ultimoIt = raiz;
+
+  raiz->dist = 0;
+  raiz->estado = VERTICE_EM_V1;
+  vertice *verticeIt;
+  vizinho *vizinhoIt;
+  while (!LIST_EMPTY(&lista)) {
+    verticeIt = lista.lh_first;
+    LIST_FOREACH(vizinhoIt, &verticeIt->vizinhos, entradas) {
+      if (vizinhoIt->verticeRef->estado == VERTICE_EM_V0) {
+        vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
+        vizinhoIt->verticeRef->dist = verticeIt->dist + 1;
+        LIST_INSERT_AFTER(vizinhoIt->verticeRef, ultimoIt, entradasTmp);
+        ultimoIt = vizinhoIt->verticeRef;
+      }
+    }
+    verticeIt->estado = VERTICE_EM_V2;
+    LIST_REMOVE(verticeIt, entradasTmp);
+  }
+
+  return ultimoIt->dist;
 }
 
-long buscaDijkstra(grafo *grafoG, vertice *raiz) {
+long buscaDijkstra(vertice *raiz) {
   long maiorCusto = 0;
 
   LIST_HEAD(lista, vertice) lista;
@@ -621,7 +654,7 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
         vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
         vizinhoIt->verticeRef->estado = VERTICE_EM_V1;
 
-        // inserir ordenado
+        /* insere ordenado */
         vertice* iteradorLista;
         LIST_FOREACH(iteradorLista, &lista, entradasTmp) {
           if (vizinhoIt->verticeRef->custo < iteradorLista->custo) {
@@ -629,7 +662,7 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
           }
         }
         LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
-        
+
       } else if (vizinhoIt->verticeRef->estado == VERTICE_EM_V1) {
         if (verticeIt->custo + vizinhoIt->peso < vizinhoIt->verticeRef->custo) {
           vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
@@ -641,4 +674,11 @@ long buscaDijkstra(grafo *grafoG, vertice *raiz) {
   }
 
   return maiorCusto;
+}
+
+char *strdup (const char *s) {
+  size_t len = strlen (s) + 1;
+  void *new = malloc (len);
+  assert(new != NULL);
+  return (char *)memcpy (new, s, len);
 }
