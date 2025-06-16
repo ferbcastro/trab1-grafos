@@ -448,7 +448,7 @@ void lowPoint(grafo *g, vertice *raiz, char **strings, int obj) {
         totalBytes += strlen(raiz->nome) + 1;
         strings[g->numVcorte++] = raiz->nome;
 
-      } else if (obj == ARESTAS_CORTE) {
+      } else if ((obj == ARESTAS_CORTE) && (w->lowPoint > raiz->L)) {
         strings[g->numAcorte++] = vizinhoIt->nome;
         totalBytes += strlen(vizinhoIt->nome) + 1;
       }
