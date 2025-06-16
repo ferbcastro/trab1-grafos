@@ -37,8 +37,8 @@
 #define VERTICE_AZUL VERTICE_EM_V1
 #define VERTICE_VERMELHO VERTICE_EM_V2
 
-#define ELEMENTO_TIPO_LONG 1
-#define ELEMENTO_TIPO_STRING 2
+#define ELEMENTOS_TIPO_LONG 1
+#define ELEMENTOS_TIPO_STRING 2
 
 typedef struct vertice vertice;
 typedef struct vizinho vizinho;
@@ -85,20 +85,6 @@ long totalBytes;
 char *verticesCorte = NULL;
 char *arestasCorte = NULL;
 char *diametrosString = NULL;
-
-int comparaLongMenor(void *a, void *b) {
-  long *numA, *numB;
-  numA = (long*)a;
-  numB = (long*)b;
-  return (*numA < *numB);
-}
-
-int comparaStringMenor(void *a, void *b) {
-  char *stringA, *stringB;
-  stringA = (char *)a;
-  stringB = (char *)b;
-  return (strcmp(stringA, stringB) < 0);
-}
 
 void mergeStrings(char **v, int a, int m, int b);
 void mergeLongs(long *v, int a, int m, int b);
@@ -479,7 +465,7 @@ char *lowPointComponentes(grafo *grafoG, int objetivo) {
     }
   }
 
-  mergeSort(strings, 0, *numCorte - 1, ELEMENTO_TIPO_STRING);
+  mergeSort(strings, 0, *numCorte - 1, ELEMENTOS_TIPO_STRING);
   string = malloc(totalBytes);
   assert(string != NULL);
   string[0] = '\0';
@@ -508,10 +494,10 @@ void mergeSort(void *v, int a, int b, int tipoDosElementos) {
     int m = (a + b) / 2;
     mergeSort(v, a, m, tipoDosElementos);
     mergeSort(v, m + 1, b, tipoDosElementos);
-    if (tipoDosElementos == ELEMENTO_TIPO_LONG) {
+    if (tipoDosElementos == ELEMENTOS_TIPO_LONG) {
       char **strings = v;
       mergeStrings(strings, a, m, b);
-    } else if (tipoDosElementos == ELEMENTO_TIPO_STRING) {
+    } else if (tipoDosElementos == ELEMENTOS_TIPO_STRING) {
       long *longs = v;
       mergeLongs(longs, a, m, b);
     }
