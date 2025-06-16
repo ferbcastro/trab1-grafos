@@ -636,12 +636,16 @@ long buscaDijkstra(vertice *raiz) {
 
         /* insere ordenado */
         vertice* iteradorLista;
+        vertice* iteradorAntes = NULL;
         LIST_FOREACH(iteradorLista, &lista, entradasTmp) {
-          if (vizinhoIt->verticeRef->custo < iteradorLista->custo) {
-            break;
-          }
+          if (vizinhoIt->verticeRef->custo < iteradorLista->custo) break;
+          iteradorAntes = iteradorLista;
         }
-        LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
+        if (iteradorLista == NULL) {
+          LIST_INSERT_AFTER(iteradorAntes, vizinhoIt->verticeRef, entradasTmp);
+        } else {
+          LIST_INSERT_BEFORE(iteradorLista, vizinhoIt->verticeRef, entradasTmp);
+        }
       } else if (vizinhoIt->verticeRef->estado == VERTICE_EM_V1) {
         if (verticeIt->custo + vizinhoIt->peso < vizinhoIt->verticeRef->custo) {
           vizinhoIt->verticeRef->custo = verticeIt->custo + vizinhoIt->peso;
